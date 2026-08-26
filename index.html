@@ -104,9 +104,23 @@
   }
   .pk-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
   .pk-scroll::-webkit-scrollbar-thumb { background: #CFE7EE; border-radius: 999px; }
+  .pk-landmark-pin {
+    position: absolute;
+    width: 38px; height: 38px;
+    margin-left: -19px; margin-top: -19px;
+    border-radius: 999px;
+    background: #FFB703;
+    border: 2px solid #fff;
+    color: #023047;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+    touch-action: none;
+    cursor: pointer;
+  }
   .pk-hero-radius { border-bottom-left-radius: 28px; border-bottom-right-radius: 28px; }
   .pk-upload-box { aspect-ratio: 4 / 3; }
   .pk-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 34px; letter-spacing: 0.32em; color: #EAF6FB; }
+  .pk-title-sm { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 20px; letter-spacing: 0.28em; color: #EAF6FB; }
   .pk-log-underline { display: inline-block; border-bottom: 3px solid #FB8500; padding-bottom: 6px; }
   .pk-segment { display: flex; border: 1px solid #CFE7EE; border-radius: 0.75rem; overflow: hidden; }
   .pk-segment button { flex: 1; padding: 0.6rem 0; font-size: 18px; font-weight: 600; background: #fff; color: #33515C; }
@@ -338,12 +352,13 @@ function Confirm({ title, body, confirmLabel = "確定", danger, onConfirm, onCa
 // map image with hotspots (edit + select + view modes)
 // ---------------------------------------------------------------------------
 
-function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, onDeleteHotspot }) {
+function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, onDeleteHotspot, landmark, onSetLandmark, onRemoveLandmark }) {
   const wrapRef = useRef(null);
   const gesture = useRef(null);
   const [draft, setDraft] = useState(null);
   const [pending, setPending] = useState(null); // a drawn box waiting for explicit confirmation
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [pendingRemoveLandmark, setPendingRemoveLandmark] = useState(false);
 
   const pctFromEvent = (e) => {
     const rect = wrapRef.current.getBoundingClientRect();
@@ -356,9 +371,10 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
     if (mode === "view") return;
     if (gesture.current) return;
     const hitEl = e.target.closest(".pk-hotspot");
+    const hitLandmark = e.target.closest(".pk-landmark-pin");
     const p = pctFromEvent(e);
-    gesture.current = { startX: p.x, startY: p.y, hitId: hitEl?.dataset.hotspotId || null };
-    if (!hitEl && mode === "edit") {
+    gesture.current = { startX: p.x, startY: p.y, hitId: hitEl?.dataset.hotspotId || null, hitLandmark: !!hitLandmark };
+    if (!hitEl && !hitLandmark && mode === "edit") {
       setPending(null);
       setDraft({ x: p.x, y: p.y, w: 0, h: 0 });
     }
@@ -367,7 +383,7 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
   const handlePointerMove = (e) => {
     if (!gesture.current) return;
     const p = pctFromEvent(e);
-    if (!gesture.current.hitId && mode === "edit") {
+    if (!gesture.current.hitId && !gesture.current.hitLandmark && mode === "edit") {
       const { startX, startY } = gesture.current;
       setDraft({
         x: Math.min(startX, p.x),
@@ -396,7 +412,19 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
       return;
     }
 
+    if (g.hitLandmark) {
+      if (moved < 2 && mode === "edit") setPendingRemoveLandmark(true);
+      setDraft(null);
+      return;
+    }
+
     if (mode === "edit") {
+      if (moved < 2) {
+        // a plain tap on empty space sets/moves the single landmark point
+        onSetLandmark({ x: g.startX, y: g.startY });
+        setDraft(null);
+        return;
+      }
       setDraft((d) => {
         // don't auto-add here — just hand the box off to "pending" and wait for
         // an explicit confirm tap, so flaky touch events can never create
@@ -436,6 +464,11 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
                 {h.label}
               </div>
             ))}
+        {landmark && (
+          <div className="pk-landmark-pin" style={{ left: `${landmark.x}%`, top: `${landmark.y}%` }}>
+            <Icon name="map-pin-filled" size={13} />
+          </div>
+        )}
         {draft && (
           <div
             className="absolute rounded-md"
@@ -457,7 +490,7 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
       </div>
       {mode === "edit" && !pending && (
         <p className="text-xs pk-text-muted mt-2">
-          在照片上拖曳畫出矩形。畫完後會出現橘色虛線框，按「新增這個方位」才會真正存進去。
+          拖曳畫矩形＝新增方位，畫完按「新增這個方位」才會存進去。輕點空白處＝設定定位點（例如電梯），再點一次定位點圖示可以移除它。
         </p>
       )}
       {mode === "edit" && pending && (
@@ -488,6 +521,18 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
           onConfirm={() => {
             onDeleteHotspot(pendingDelete.id);
             setPendingDelete(null);
+          }}
+        />
+      )}
+      {pendingRemoveLandmark && (
+        <Confirm
+          title="移除定位點？"
+          confirmLabel="移除"
+          danger
+          onCancel={() => setPendingRemoveLandmark(false)}
+          onConfirm={() => {
+            onRemoveLandmark();
+            setPendingRemoveLandmark(false);
           }}
         />
       )}
@@ -844,6 +889,7 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
               hotspots={selectedMap.hotspots}
               mode="select"
               selectedId={hotspotId}
+              landmark={selectedMap.landmark}
               onSelect={(h) => {
                 setHotspotId(h.id === hotspotId ? null : h.id);
                 setHotspotLabel(h.id === hotspotId ? null : h.label);
@@ -879,7 +925,7 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
 // home
 // ---------------------------------------------------------------------------
 
-function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
+function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
   const [records, setRecords] = useState(null);
   const [maps, setMaps] = useState([]);
   const [mode, setMode] = useState("home");
@@ -929,6 +975,7 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
   return (
     <div className="min-h-screen pk-root pk-bg-app">
       <div className="px-5 pt-14 pb-7 pk-bg-ink pk-text-light pk-hero-radius">
+        <div className="pk-title-sm mb-4">PARKING <span className="pk-log-underline" style={{ borderBottomWidth: 2 }}>LOG</span></div>
         <div className="flex items-center justify-between mb-5">
           <span className="pk-plate text-sm">{formatPlateDisplay(session.plate)}</span>
           <div className="relative">
@@ -941,7 +988,10 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
             {menuOpen && (
               <React.Fragment>
                 <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg border pk-border py-1 z-30">
+                <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border pk-border py-1 z-30">
+                  <button onClick={onGoHelp} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
+                    <Icon name="help-circle" size={14} /> 使用說明
+                  </button>
                   <button onClick={onLogout} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
                     <Icon name="logout" size={14} /> 登出
                   </button>
@@ -964,11 +1014,11 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm pk-text-muted flex items-center gap-1">
+            <div className="mb-4">
+              <div className="text-sm pk-text-muted flex items-center gap-1 mb-0.5">
                 <Icon name="clock" size={12} /> {fmtDateTime(active.datetime)}
-              </span>
-              <span className="text-sm font-semibold pk-text-muted-strong">{active.lotName}</span>
+              </div>
+              <div className="text-sm font-semibold pk-text-muted-strong">{active.lotName}</div>
             </div>
 
             <div className={`grid ${statCols} gap-2.5 mb-4`}>
@@ -991,7 +1041,7 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
             {elapsedLabel && (
               <div className="rounded-xl pk-bg-teal-tint px-3.5 py-2.5 mb-4 flex items-center gap-2">
                 <Icon name="clock" size={14} className="pk-text-teal-dark" />
-                <span className="text-sm pk-text-teal-dark font-semibold">已經在這邊待了 {elapsedLabel} 囉</span>
+                <span className="text-sm pk-text-teal-dark font-semibold">已經停了 {elapsedLabel} 囉</span>
               </div>
             )}
 
@@ -999,7 +1049,7 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
 
             {activeMap && (
               <div className="mb-4">
-                <MapCanvas image={activeMap.image} hotspots={activeMap.hotspots} mode="view" selectedId={active.hotspotId} />
+                <MapCanvas image={activeMap.image} hotspots={activeMap.hotspots} mode="view" selectedId={active.hotspotId} landmark={activeMap.landmark} />
               </div>
             )}
 
@@ -1147,6 +1197,7 @@ function MapEditView({ plate, initial, onCancel, onSaved }) {
   const [name, setName] = useState(initial?.name || "");
   const [image, setImage] = useState(initial?.image || null);
   const [hotspots, setHotspots] = useState(initial?.hotspots || []);
+  const [landmark, setLandmark] = useState(initial?.landmark || null);
   const [err, setErr] = useState("");
   const [saving, setSaving] = useState(false);
   const [busyImg, setBusyImg] = useState(false);
@@ -1159,6 +1210,7 @@ function MapEditView({ plate, initial, onCancel, onSaved }) {
       const dataUrl = await resizeImageFile(file);
       setImage(dataUrl);
       setHotspots([]);
+      setLandmark(null);
     } catch (e) {
       setErr("圖片讀取失敗，請換一張試試");
     }
@@ -1179,7 +1231,7 @@ function MapEditView({ plate, initial, onCancel, onSaved }) {
     if (!image) return setErr("請上傳一張照片");
     setSaving(true);
     const maps = (await sGet(kMaps(plate))) || [];
-    const record = { id: initial?.id || newId(), name: name.trim(), image, hotspots };
+    const record = { id: initial?.id || newId(), name: name.trim(), image, hotspots, landmark };
     const next = isEdit ? maps.map((m) => (m.id === initial.id ? record : m)) : [...maps, record];
     const ok = await sSet(kMaps(plate), next);
     setSaving(false);
@@ -1207,7 +1259,16 @@ function MapEditView({ plate, initial, onCancel, onSaved }) {
             </label>
           ) : (
             <div>
-              <MapCanvas image={image} hotspots={hotspots} mode="edit" onAddHotspot={addHotspot} onDeleteHotspot={deleteHotspot} />
+              <MapCanvas
+                image={image}
+                hotspots={hotspots}
+                mode="edit"
+                onAddHotspot={addHotspot}
+                onDeleteHotspot={deleteHotspot}
+                landmark={landmark}
+                onSetLandmark={setLandmark}
+                onRemoveLandmark={() => setLandmark(null)}
+              />
               <label htmlFor={inputId} className="mt-2.5 text-sm pk-text-teal font-semibold inline-block" style={{ cursor: "pointer" }}>
                 更換照片（會清除目前的方位）
               </label>
@@ -1321,6 +1382,40 @@ function MapsListView({ session, onBack }) {
 }
 
 // ---------------------------------------------------------------------------
+// help / how-to-use
+// ---------------------------------------------------------------------------
+
+function HelpStep({ icon, color, title, desc }) {
+  return (
+    <div className="flex gap-3.5 mb-5">
+      <div className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center ${color}`}>
+        <Icon name={icon} size={20} className="text-white" />
+      </div>
+      <div>
+        <div className="pk-display text-base font-semibold pk-text-strong mb-0.5">{title}</div>
+        <div className="text-sm pk-text-muted-strong leading-relaxed">{desc}</div>
+      </div>
+    </div>
+  );
+}
+
+function HelpView({ onBack }) {
+  return (
+    <div className="min-h-screen pk-root pk-bg-app">
+      <TopBar title="使用說明" onBack={onBack} />
+      <div className="px-5 py-6">
+        <HelpStep icon="key" color="pk-bg-ink" title="① 新增車牌" desc="第一次使用時輸入車牌全名、你的名字、自訂密碼。同一台車的家人都可以各自新增自己的使用者，共用同一份紀錄。" />
+        <HelpStep icon="login" color="pk-bg-teal" title="② 登入" desc="之後只要輸入車牌後四碼，選擇自己的名字、輸入密碼即可，不用每次打完整車牌。" />
+        <HelpStep icon="parking" color="pk-bg-flame" title="③ 停車" desc="選長停或臨停、填場名跟車格號碼。如果是常用停車場，選擇後可以直接點方位圖標記位置，臨停還會顯示已經停多久。" />
+        <HelpStep icon="car" color="pk-bg-ink" title="④ 取車" desc="首頁按「取車」確認，這筆紀錄就會收進歷史紀錄，同時可以再開始下一次停車。" />
+        <HelpStep icon="map-pin" color="pk-bg-teal" title="⑤ 方位圖管理" desc="常用停車場可以上傳照片、拖曳畫出區域，還能點一下設定一個定位點（例如電梯），下次停車時能快速知道方向。" />
+        <HelpStep icon="clock" color="pk-bg-flame" title="⑥ 歷史紀錄" desc="所有停過的紀錄都在這裡，可以編輯或刪除，已取車超過三個月的紀錄會自動清除。" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // app root
 // ---------------------------------------------------------------------------
 
@@ -1385,10 +1480,12 @@ function App() {
           onLogout={() => { setSession(null); setAuthView("login"); setNav("home"); }}
           onGoHistory={() => setNav("history")}
           onGoMaps={() => setNav("maps")}
+          onGoHelp={() => setNav("help")}
         />
       )}
       {nav === "history" && <HistoryView session={session} onBack={() => setNav("home")} />}
       {nav === "maps" && <MapsListView session={session} onBack={() => setNav("home")} />}
+      {nav === "help" && <HelpView onBack={() => setNav("home")} />}
     </div>
   );
 }
