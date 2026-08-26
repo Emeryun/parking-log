@@ -786,6 +786,7 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
   const [selectedMapId, setSelectedMapId] = useState(initial?.mapId || null);
   const [hotspotId, setHotspotId] = useState(initial?.hotspotId || null);
   const [hotspotLabel, setHotspotLabel] = useState(initial?.hotspotLabel || null);
+  const [floor, setFloor] = useState(initial?.floor || "");
   const [area, setArea] = useState(initial?.area || "");
   const [spotNumber, setSpotNumber] = useState(initial?.spotNumber || "");
   const [note, setNote] = useState(initial?.note || "");
@@ -823,6 +824,7 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
       hotspotId,
       hotspotLabel,
       area: area.trim(),
+      floor: floor.trim(),
       spotNumber: spotNumber.trim(),
       note: note.trim(),
       createdAt: initial?.createdAt || new Date().toISOString(),
@@ -898,6 +900,10 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
           </div>
         )}
 
+        <Field label="樓層">
+          <input className="pk-input" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="例如：B3" />
+        </Field>
+
         <Field label="區域">
           <input className="pk-input" value={area} onChange={(e) => setArea(e.target.value)} />
         </Field>
@@ -956,7 +962,6 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
 
   const active = records.find((r) => r.status === "active") || null;
   const activeMap = active?.mapId ? maps.find((m) => m.id === active.mapId) : null;
-  const statCols = active?.hotspotLabel ? "grid-cols-3" : "grid-cols-2";
   const elapsedLabel =
     active && active.parkType === "short" ? formatDuration(Date.now() - new Date(active.datetime).getTime() + tick * 0) : null;
 
@@ -1021,7 +1026,13 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
               <div className="text-sm font-semibold pk-text-muted-strong">{active.lotName}</div>
             </div>
 
-            <div className={`grid ${statCols} gap-2.5 mb-4`}>
+            <div className="grid grid-cols-2 gap-2.5 mb-4">
+              {active.floor && (
+                <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                  <div className="text-xs font-semibold pk-text-orange-label mb-0.5">樓層</div>
+                  <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.floor}</div>
+                </div>
+              )}
               <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
                 <div className="text-xs font-semibold pk-text-orange-label mb-0.5">區域</div>
                 <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.area || "—"}</div>
@@ -1159,6 +1170,7 @@ function HistoryView({ session, onBack }) {
                     <span className={done ? "" : "pk-text-teal"}>{r.parkType === "short" ? "臨停" : "長停"}</span>
                   </div>
                   <div className={`text-base ${done ? "pk-text-muted" : "pk-text-strong"}`}>
+                    {r.floor && <span className={`font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.floor}　</span>}
                     {r.area && <span className={`font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.area}　</span>}
                     車格 <span className={`pk-code font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.spotNumber}</span>
                     {r.hotspotLabel && <span>　方位 <span className={`pk-code font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.hotspotLabel}</span></span>}
@@ -1385,15 +1397,29 @@ function MapsListView({ session, onBack }) {
 // help / how-to-use
 // ---------------------------------------------------------------------------
 
-function HelpStep({ icon, color, title, desc }) {
+function HelpStep({ icon, title, desc, note, bullets }) {
   return (
-    <div className="flex gap-3.5 mb-5">
-      <div className={`shrink-0 w-11 h-11 rounded-full flex items-center justify-center ${color}`}>
-        <Icon name={icon} size={20} className="text-white" />
+    <div className="flex gap-3.5 mb-6">
+      <div className="shrink-0 w-11 h-11 rounded-full pk-bg-teal-tint flex items-center justify-center">
+        <Icon name={icon} size={19} className="pk-text-teal-dark" />
       </div>
-      <div>
-        <div className="pk-display text-base font-semibold pk-text-strong mb-0.5">{title}</div>
+      <div className="flex-1 min-w-0">
+        <div className="pk-display text-base font-semibold pk-text-strong mb-1">{title}</div>
         <div className="text-sm pk-text-muted-strong leading-relaxed">{desc}</div>
+        {bullets && (
+          <div className="mt-2.5 flex flex-col gap-1.5">
+            {bullets.map((b, i) => (
+              <div key={i} className="flex items-start gap-2">
+                <span className="shrink-0 w-1 h-1 rounded-full pk-bg-teal mt-2" />
+                <span className="text-[13px] leading-relaxed">
+                  <span className="font-semibold pk-text-teal-dark">{b.label}</span>
+                  <span className="pk-text-muted"> — {b.result}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {note && <div className="text-xs pk-text-faint leading-relaxed mt-2">{note}</div>}
       </div>
     </div>
   );
@@ -1404,12 +1430,43 @@ function HelpView({ onBack }) {
     <div className="min-h-screen pk-root pk-bg-app">
       <TopBar title="使用說明" onBack={onBack} />
       <div className="px-5 py-6">
-        <HelpStep icon="key" color="pk-bg-ink" title="① 新增車牌" desc="第一次使用時輸入車牌全名、你的名字、自訂密碼。同一台車的家人都可以各自新增自己的使用者，共用同一份紀錄。" />
-        <HelpStep icon="login" color="pk-bg-teal" title="② 登入" desc="之後只要輸入車牌後四碼，選擇自己的名字、輸入密碼即可，不用每次打完整車牌。" />
-        <HelpStep icon="parking" color="pk-bg-flame" title="③ 停車" desc="選長停或臨停、填場名跟車格號碼。如果是常用停車場，選擇後可以直接點方位圖標記位置，臨停還會顯示已經停多久。" />
-        <HelpStep icon="car" color="pk-bg-ink" title="④ 取車" desc="首頁按「取車」確認，這筆紀錄就會收進歷史紀錄，同時可以再開始下一次停車。" />
-        <HelpStep icon="map-pin" color="pk-bg-teal" title="⑤ 方位圖管理" desc="常用停車場可以上傳照片、拖曳畫出區域，還能點一下設定一個定位點（例如電梯），下次停車時能快速知道方向。" />
-        <HelpStep icon="clock" color="pk-bg-flame" title="⑥ 歷史紀錄" desc="所有停過的紀錄都在這裡，可以編輯或刪除，已取車超過三個月的紀錄會自動清除。" />
+        <HelpStep
+          icon="key"
+          title="新增車牌（首次使用）"
+          desc="輸入車牌全名 ➜ 你的名字 ➜ 自訂密碼。"
+          note="每台車可擁有多個使用者，各使用者擁有各自的密碼，各使用者分別登入時都可以查閱同台車的紀錄。"
+        />
+        <HelpStep
+          icon="login"
+          title="登入帳號"
+          desc="輸入車牌 ➜ 選擇名稱 ➜ 輸入密碼。"
+        />
+        <HelpStep
+          icon="parking"
+          title="停車"
+          desc="點擊「停車」，填寫停車相關資訊（場名、車格號碼等）。"
+          bullets={[
+            { label: "常用停車場", result: "可選擇方位圖位置" },
+            { label: "臨停", result: "可顯示停放累積時間" },
+          ]}
+        />
+        <HelpStep
+          icon="car"
+          title="取車"
+          desc="點擊「取車」，這筆紀錄就會收進歷史紀錄，同時可以再開始下一次停車。"
+        />
+        <HelpStep
+          icon="map-pin"
+          title="常用停車場"
+          desc="透過「方位圖管理」可建立常用停車場平面圖：上傳照片 ➜ 拖曳畫出多個區域 ➜ 點一下設定定位點（例如電梯）。"
+          note="這樣取車時就可以快速知道停車方向。"
+        />
+        <HelpStep
+          icon="clock"
+          title="歷史紀錄"
+          desc="所有停過的紀錄都在這裡，可以編輯或刪除。"
+          note="已取車超過三個月的紀錄會自動清除。"
+        />
       </div>
     </div>
   );
