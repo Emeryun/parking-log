@@ -544,7 +544,7 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
 // login / register
 // ---------------------------------------------------------------------------
 
-function LoginView({ onLoggedIn, onGoRegister }) {
+function LoginView({ onLoggedIn, onGoRegister, onGoHelp }) {
   const [step, setStep] = useState("plate");
   const [input, setInput] = useState("");
   const [matches, setMatches] = useState([]);
@@ -606,7 +606,12 @@ function LoginView({ onLoggedIn, onGoRegister }) {
   return (
     <div className="min-h-screen pk-root pk-bg-app flex flex-col">
       <div className="px-6 pt-14 pb-8 pk-bg-ink pk-text-light pk-hero-radius">
-        <div className="pk-title">PARKING <span className="pk-log-underline">LOG</span></div>
+        <div className="flex items-center justify-between">
+          <div className="pk-title">PARKING <span className="pk-log-underline">LOG</span></div>
+          <button onClick={onGoHelp} className="w-9 h-9 rounded-full pk-bg-white-tint flex items-center justify-center shrink-0">
+            <Icon name="help-circle" size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 px-5 pt-6 pb-10">
@@ -904,12 +909,12 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
           <input className="pk-input" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="例如：B3" />
         </Field>
 
-        <Field label="區域">
-          <input className="pk-input" value={area} onChange={(e) => setArea(e.target.value)} />
-        </Field>
-
         <Field label="車格號碼" required>
           <input className="pk-input" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} placeholder="例如：132" />
+        </Field>
+
+        <Field label="區域">
+          <input className="pk-input" value={area} onChange={(e) => setArea(e.target.value)} />
         </Field>
 
         <Field label="備註">
@@ -1034,12 +1039,12 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
                 </div>
               )}
               <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
-                <div className="text-xs font-semibold pk-text-orange-label mb-0.5">區域</div>
-                <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.area || "—"}</div>
-              </div>
-              <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
                 <div className="text-xs font-semibold pk-text-orange-label mb-0.5">車格</div>
                 <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.spotNumber}</div>
+              </div>
+              <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                <div className="text-xs font-semibold pk-text-orange-label mb-0.5">區域</div>
+                <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.area || "—"}</div>
               </div>
               {active.hotspotLabel && (
                 <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
@@ -1171,8 +1176,8 @@ function HistoryView({ session, onBack }) {
                   </div>
                   <div className={`text-base ${done ? "pk-text-muted" : "pk-text-strong"}`}>
                     {r.floor && <span className={`font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.floor}　</span>}
-                    {r.area && <span className={`font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.area}　</span>}
                     車格 <span className={`pk-code font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.spotNumber}</span>
+                    {r.area && <span>　<span className={`font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.area}</span></span>}
                     {r.hotspotLabel && <span>　方位 <span className={`pk-code font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.hotspotLabel}</span></span>}
                   </div>
                   {r.note && <div className="text-xs pk-text-faint italic mt-1">{r.note}</div>}
@@ -1453,12 +1458,13 @@ function HelpView({ onBack }) {
         <HelpStep
           icon="car"
           title="取車"
-          desc="點擊「取車」，這筆紀錄就會收進歷史紀錄，同時可以再開始下一次停車。"
+          desc="點擊「取車」，這筆紀錄就會收進歷史紀錄。"
+          note="同時可以再開始下一次停車。"
         />
         <HelpStep
           icon="map-pin"
           title="常用停車場"
-          desc="透過「方位圖管理」可建立常用停車場平面圖：上傳照片 ➜ 拖曳畫出多個區域 ➜ 點一下設定定位點（例如電梯）。"
+          desc={<React.Fragment>透過「方位圖管理」可建立常用停車場平面圖。<br />上傳照片 ➜ 拖曳畫出多個區域 ➜ 點一下設定定位點（例如電梯）。</React.Fragment>}
           note="這樣取車時就可以快速知道停車方向。"
         />
         <HelpStep
@@ -1480,6 +1486,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [authView, setAuthView] = useState("login");
   const [nav, setNav] = useState("home");
+  const [showHelp, setShowHelp] = useState(false);
   const [status, setStatus] = useState(isConfigured ? "checking" : "unconfigured");
 
   useEffect(() => {
@@ -1523,10 +1530,22 @@ function App() {
     );
   }
 
+  if (showHelp) {
+    return (
+      <div className="pk-root">
+        <HelpView onBack={() => setShowHelp(false)} />
+      </div>
+    );
+  }
+
   if (!session) {
-    return authView === "login"
-      ? <LoginView onLoggedIn={setSession} onGoRegister={() => setAuthView("register")} />
-      : <RegisterView onDone={setSession} onCancel={() => setAuthView("login")} />;
+    return (
+      <div className="pk-root">
+        {authView === "login"
+          ? <LoginView onLoggedIn={setSession} onGoRegister={() => setAuthView("register")} onGoHelp={() => setShowHelp(true)} />
+          : <RegisterView onDone={setSession} onCancel={() => setAuthView("login")} />}
+      </div>
+    );
   }
 
   return (
@@ -1537,12 +1556,11 @@ function App() {
           onLogout={() => { setSession(null); setAuthView("login"); setNav("home"); }}
           onGoHistory={() => setNav("history")}
           onGoMaps={() => setNav("maps")}
-          onGoHelp={() => setNav("help")}
+          onGoHelp={() => setShowHelp(true)}
         />
       )}
       {nav === "history" && <HistoryView session={session} onBack={() => setNav("home")} />}
       {nav === "maps" && <MapsListView session={session} onBack={() => setNav("home")} />}
-      {nav === "help" && <HelpView onBack={() => setNav("home")} />}
     </div>
   );
 }
