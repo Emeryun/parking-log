@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
 <title>Parking Log</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/dist/tabler-icons.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.17.0/dist/tabler-icons.min.css" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   body { margin: 0; }
@@ -350,8 +350,12 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
     return { x, y };
   };
 
+  const lastCommitRef = useRef(0);
+
   const handlePointerDown = (e) => {
     if (mode === "view") return;
+    if (gesture.current) return;
+    if (Date.now() - lastCommitRef.current < 400) return;
     const hitEl = e.target.closest(".pk-hotspot");
     const p = pctFromEvent(e);
     gesture.current = { startX: p.x, startY: p.y, hitId: hitEl?.dataset.hotspotId || null };
@@ -394,7 +398,10 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
 
     if (mode === "edit") {
       setDraft((d) => {
-        if (d && d.w > 3 && d.h > 3) onAddHotspot({ x: d.x, y: d.y, w: d.w, h: d.h });
+        if (d && d.w > 6 && d.h > 6) {
+          onAddHotspot({ x: d.x, y: d.y, w: d.w, h: d.h });
+          lastCommitRef.current = Date.now();
+        }
         return null;
       });
     }
@@ -1131,8 +1138,10 @@ function MapEditView({ plate, initial, onCancel, onSaved }) {
   };
 
   const addHotspot = (rect) => {
-    const label = ALPHABET[hotspots.length] || `#${hotspots.length + 1}`;
-    setHotspots((prev) => [...prev, { id: newId(), label, ...rect }]);
+    setHotspots((prev) => {
+      const label = ALPHABET[prev.length] || `#${prev.length + 1}`;
+      return [...prev, { id: newId(), label, ...rect }];
+    });
   };
   const deleteHotspot = (id) => setHotspots((prev) => prev.filter((h) => h.id !== id));
 
