@@ -1297,7 +1297,7 @@ function App() {
     if (!isConfigured) return;
     (async () => {
       try {
-        const ok = await sSet("__healthcheck__", Date.now());
+        const ok = await sSet("healthcheck_ping", Date.now());
         setStatus(ok ? "ready" : "error");
       } catch (e) {
         console.error("Firestore healthcheck failed", e);
