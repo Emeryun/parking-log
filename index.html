@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Parking Log</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/dist/tabler-icons.min.css" />
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { margin: 0; }
+  .pk-root { font-family: 'Inter', system-ui, sans-serif; }
+  .pk-display { font-family: 'Oswald', system-ui, sans-serif; letter-spacing: 0.02em; }
+  .pk-code { font-family: 'JetBrains Mono', monospace; }
+
+  .pk-input {
+    width: 100%;
+    border: 1px solid #CFE7EE;
+    background: #fff;
+    color: #0B2436;
+    border-radius: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    font-size: 15px;
+    outline: none;
+  }
+  .pk-input:focus {
+    border-color: #219EBC;
+    box-shadow: 0 0 0 3px rgba(33,158,188,0.2);
+  }
+
+  .pk-bg-app { background: #E5E5E5; }
+  .pk-bg-app-translucent { background: rgba(229,229,229,0.95); }
+  .pk-bg-ink { background: #023047; }
+  .pk-bg-teal { background: #219EBC; }
+  .pk-bg-flame { background: #FB8500; }
+  .pk-bg-orange-tint { background: #FFEDDC; }
+  .pk-bg-teal-tint { background: #E1F3F8; }
+  .pk-bg-muted-tint { background: #EBEBEB; }
+  .pk-bg-danger-tint { background: #FBE7E8; }
+  .pk-bg-danger { background: #C23A3A; }
+  .pk-bg-cancel { background: #EEF5F8; }
+  .pk-bg-white-tint { background: rgba(255,255,255,0.1); }
+
+  .pk-text-strong { color: #0B2436; }
+  .pk-text-light { color: #EAF6FB; }
+  .pk-text-light-dim { color: rgba(234,246,251,0.6); }
+  .pk-text-muted { color: #7391A0; }
+  .pk-text-muted-strong { color: #33515C; }
+  .pk-text-faint { color: #9BB2BB; }
+  .pk-text-teal { color: #219EBC; }
+  .pk-text-teal-dark { color: #146C86; }
+  .pk-text-flame { color: #FB8500; }
+  .pk-text-orange-label { color: #B85C00; }
+  .pk-text-danger { color: #C23A3A; }
+  .pk-text-ink { color: #023047; }
+
+  .pk-border { border-color: #DCEEF3; }
+
+  .pk-plate {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    background: linear-gradient(180deg, #ffffff, #eef4f7);
+    color: #023047;
+    border: 2px solid #023047;
+    border-radius: 6px;
+    padding: 4px 10px;
+    display: inline-block;
+    box-shadow: inset 0 0 0 2px #ffffff;
+  }
+  .pk-btn-primary { background: #FB8500; color: #ffffff; font-weight: 700; }
+  .pk-btn-primary:active { background: #e17800; }
+  .pk-btn-dark { background: #023047; color: #EAF6FB; font-weight: 600; }
+  .pk-btn-dark:active { background: #01212f; }
+  .pk-hotspot {
+    position: absolute;
+    border: 2px solid #219EBC;
+    background: rgba(33,158,188,0.28);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    touch-action: none;
+    cursor: pointer;
+  }
+  .pk-hotspot.selected { background: rgba(251,133,0,0.38); border-color: #FB8500; }
+  .pk-hotspot-pin {
+    position: absolute;
+    width: 30px; height: 30px;
+    margin-left: -15px; margin-top: -15px;
+    border-radius: 999px;
+    background: #FB8500;
+    border: 2px solid #fff;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
+    font-size: 13px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  }
+  .pk-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
+  .pk-scroll::-webkit-scrollbar-thumb { background: #CFE7EE; border-radius: 999px; }
+  .pk-hero-radius { border-bottom-left-radius: 28px; border-bottom-right-radius: 28px; }
+  .pk-upload-box { aspect-ratio: 4 / 3; }
+  .pk-title { font-family: 'Oswald', sans-serif; font-weight: 600; font-size: 26px; letter-spacing: 0.32em; color: #EAF6FB; }
+  .pk-log-underline { display: inline-block; border-bottom: 3px solid #FB8500; padding-bottom: 6px; }
+  .pk-segment { display: flex; border: 1px solid #CFE7EE; border-radius: 0.75rem; overflow: hidden; }
+  .pk-segment button { flex: 1; padding: 0.6rem 0; font-size: 14px; font-weight: 600; background: #fff; color: #33515C; }
+  .pk-segment button.active { background: #023047; color: #EAF6FB; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ---------------------------------------------------------------------------
+// Firebase setup — paste your project's config here (see setup instructions)
+// ---------------------------------------------------------------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyCxuQXFBujy39KmjXX-Q8mSKJqEftq3oZo",
+  authDomain: "parking-log-f3fc7.firebaseapp.com",
+  projectId: "parking-log-f3fc7",
+  storageBucket: "parking-log-f3fc7.firebasestorage.app",
+  messagingSenderId: "863121623619",
+  appId: "1:863121623619:web:047fe05630ab80443862f6"
+};
+const isConfigured = firebaseConfig.apiKey && !String(firebaseConfig.apiKey).includes("YOUR_");
+let db = null;
+if (isConfigured) {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+}
+
+// ---------------------------------------------------------------------------
+// storage layer (Firestore, one document per key, all devices share the same data)
+// ---------------------------------------------------------------------------
+async function sGet(key) {
+  try {
+    const snap = await db.collection("parkingLog").doc(key).get();
+    return snap.exists ? snap.data().value : null;
+  } catch (e) {
+    return null;
+  }
+}
+async function sSet(key, value) {
+  try {
+    await db.collection("parkingLog").doc(key).set({ value, updatedAt: Date.now() });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// icons — Tabler webfont, e.g. <Icon name="car" size={18} />
+// ---------------------------------------------------------------------------
+function Icon({ name, size = 18, className = "" }) {
+  return <i className={`ti ti-${name} ${className}`} style={{ fontSize: size, lineHeight: 1 }} />;
+}
+
+// ---------------------------------------------------------------------------
+// constants & helpers
+// ---------------------------------------------------------------------------
+
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+const norm = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const plateKeyPart = (plate) => norm(plate);
+
+const kPlatesDirectory = "plates_directory";
+const kCar = (plate) => `car_${plateKeyPart(plate)}`;
+const kRecords = (plate) => `records_${plateKeyPart(plate)}`;
+const kMaps = (plate) => `maps_${plateKeyPart(plate)}`;
+
+function nowLocal() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d - tz).toISOString().slice(0, 16);
+}
+function fmtDateTime(iso) {
+  if (!iso) return "";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("zh-TW", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hour12: false,
+    });
+  } catch (e) {
+    return iso;
+  }
+}
+function formatDuration(ms) {
+  const totalMin = Math.max(0, Math.floor(ms / 60000));
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m} 分`;
+  return `${h} 小時 ${m} 分`;
+}
+function formatPlateDisplay(plate) {
+  const parts = (plate || "").split("-");
+  if (parts.length === 2) return `${parts[0]} - ${parts[1]}`;
+  return plate || "";
+}
+function newId() {
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+const THREE_MONTHS_MS = 1000 * 60 * 60 * 24 * 30 * 3;
+async function loadRecordsPruned(plate) {
+  const records = (await sGet(kRecords(plate))) || [];
+  const cutoff = Date.now() - THREE_MONTHS_MS;
+  const kept = records.filter((r) => r.status === "active" || new Date(r.datetime).getTime() >= cutoff);
+  if (kept.length !== records.length) {
+    await sSet(kRecords(plate), kept);
+  }
+  return kept;
+}
+
+// resizes + compresses, then keeps shrinking until it fits Firestore's 1MB doc limit
+function resizeImageFile(file, targetBytes = 650000) {
+  const toDataUrl = (img, maxW, quality) => {
+    const scale = Math.min(1, maxW / img.width);
+    const w = Math.round(img.width * scale);
+    const h = Math.round(img.height * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", quality);
+  };
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new window.Image();
+      img.onload = () => {
+        try {
+          let maxW = 900, quality = 0.72;
+          let out = toDataUrl(img, maxW, quality);
+          let tries = 0;
+          while (out.length > targetBytes && tries < 6) {
+            quality = Math.max(0.4, quality - 0.1);
+            maxW = Math.max(400, Math.round(maxW * 0.85));
+            out = toDataUrl(img, maxW, quality);
+            tries++;
+          }
+          resolve(out);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// shared bits
+// ---------------------------------------------------------------------------
+
+function TopBar({ title, onBack, right }) {
+  return (
+    <div className="sticky top-0 z-20 flex items-center justify-between px-4 py-3 pk-bg-ink pk-text-light">
+      <div className="flex items-center gap-2 min-w-0">
+        {onBack && (
+          <button onClick={onBack} className="p-1 -ml-1 rounded-full">
+            <Icon name="chevron-left" size={22} />
+          </button>
+        )}
+        <div className="pk-display text-lg font-semibold truncate">{title}</div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">{right}</div>
+    </div>
+  );
+}
+
+function Field({ label, required, children, hint }) {
+  return (
+    <label className="block mb-4">
+      <span className="block text-sm font-semibold pk-text-muted-strong mb-1.5">
+        {label} {required && <span className="pk-text-flame">*</span>}
+      </span>
+      {children}
+      {hint && <span className="block text-xs pk-text-muted mt-1">{hint}</span>}
+    </label>
+  );
+}
+
+function ErrorBox({ msg }) {
+  if (!msg) return null;
+  return (
+    <div className="flex items-start gap-2 rounded-lg pk-bg-danger-tint pk-text-danger px-3 py-2.5 text-sm mb-3">
+      <Icon name="alert-circle" size={16} className="shrink-0 mt-0.5" />
+      <span>{msg}</span>
+    </div>
+  );
+}
+
+function Confirm({ title, body, confirmLabel = "確定", danger, onConfirm, onCancel }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">
+      <div className="w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-5">
+        <div className="pk-display text-lg font-semibold pk-text-strong mb-1.5">{title}</div>
+        {body && <div className="text-sm pk-text-muted-strong mb-5">{body}</div>}
+        <div className="flex gap-2.5">
+          <button onClick={onCancel} className="flex-1 rounded-xl py-2.5 text-sm font-semibold pk-bg-cancel pk-text-muted-strong">
+            取消
+          </button>
+          <button
+            onClick={onConfirm}
+            className={`flex-1 rounded-xl py-2.5 text-sm font-semibold ${danger ? "pk-bg-danger text-white" : "pk-btn-primary"}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// map image with hotspots (edit + select + view modes)
+// ---------------------------------------------------------------------------
+
+function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, onDeleteHotspot }) {
+  const wrapRef = useRef(null);
+  const gesture = useRef(null);
+  const [draft, setDraft] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
+
+  const pctFromEvent = (e) => {
+    const rect = wrapRef.current.getBoundingClientRect();
+    const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100));
+    return { x, y };
+  };
+
+  const handlePointerDown = (e) => {
+    if (mode === "view") return;
+    const hitEl = e.target.closest(".pk-hotspot");
+    const p = pctFromEvent(e);
+    gesture.current = { startX: p.x, startY: p.y, hitId: hitEl?.dataset.hotspotId || null };
+    if (!hitEl && mode === "edit") {
+      setDraft({ x: p.x, y: p.y, w: 0, h: 0 });
+    }
+    wrapRef.current.setPointerCapture?.(e.pointerId);
+  };
+  const handlePointerMove = (e) => {
+    if (!gesture.current) return;
+    const p = pctFromEvent(e);
+    if (!gesture.current.hitId && mode === "edit") {
+      const { startX, startY } = gesture.current;
+      setDraft({
+        x: Math.min(startX, p.x),
+        y: Math.min(startY, p.y),
+        w: Math.abs(p.x - startX),
+        h: Math.abs(p.y - startY),
+      });
+    }
+  };
+  const handlePointerUp = (e) => {
+    const g = gesture.current;
+    gesture.current = null;
+    if (!g) return;
+    const p = pctFromEvent(e);
+    const moved = Math.hypot(p.x - g.startX, p.y - g.startY);
+
+    if (g.hitId) {
+      if (moved < 2) {
+        const h = hotspots.find((x) => x.id === g.hitId);
+        if (h) {
+          if (mode === "edit") setPendingDelete(h);
+          else if (mode === "select") onSelect(h);
+        }
+      }
+      setDraft(null);
+      return;
+    }
+
+    if (mode === "edit") {
+      setDraft((d) => {
+        if (d && d.w > 3 && d.h > 3) onAddHotspot({ x: d.x, y: d.y, w: d.w, h: d.h });
+        return null;
+      });
+    }
+  };
+
+  return (
+    <div>
+      <div
+        ref={wrapRef}
+        className="relative select-none rounded-xl overflow-hidden border pk-border touch-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <img src={image} alt="停車場方位圖" className="w-full block pointer-events-none" draggable={false} />
+        {hotspots.map((h) => (
+          <div
+            key={h.id}
+            data-hotspot-id={h.id}
+            className={`pk-hotspot ${selectedId === h.id ? "selected" : ""}`}
+            style={{ left: `${h.x}%`, top: `${h.y}%`, width: `${h.w}%`, height: `${h.h}%` }}
+          >
+            {h.label}
+          </div>
+        ))}
+        {mode === "view" &&
+          hotspots
+            .filter((h) => h.id === selectedId)
+            .map((h) => (
+              <div key={h.id} className="pk-hotspot-pin" style={{ left: `${h.x + h.w / 2}%`, top: `${h.y + h.h / 2}%` }}>
+                {h.label}
+              </div>
+            ))}
+        {draft && (
+          <div
+            className="absolute rounded-md"
+            style={{
+              left: `${draft.x}%`, top: `${draft.y}%`, width: `${draft.w}%`, height: `${draft.h}%`,
+              border: "2px dashed #219EBC", background: "rgba(33,158,188,0.15)",
+            }}
+          />
+        )}
+      </div>
+      {mode === "edit" && (
+        <p className="text-xs pk-text-muted mt-2">
+          在照片上拖曳畫出矩形，就會建立一個新方位（自動命名）。點選已建立的方位可以刪除它。
+        </p>
+      )}
+      {pendingDelete && (
+        <Confirm
+          title={`刪除方位 ${pendingDelete.label}？`}
+          confirmLabel="刪除"
+          danger
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onDeleteHotspot(pendingDelete.id);
+            setPendingDelete(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// login / register
+// ---------------------------------------------------------------------------
+
+function LoginView({ onLoggedIn, onGoRegister }) {
+  const [step, setStep] = useState("plate");
+  const [input, setInput] = useState("");
+  const [matches, setMatches] = useState([]);
+  const [plate, setPlate] = useState(null);
+  const [car, setCar] = useState(null);
+  const [user, setUser] = useState(null);
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const search = async () => {
+    setErr("");
+    const q = norm(input);
+    if (q.length < 2) {
+      setErr("請輸入至少 2 碼");
+      return;
+    }
+    setLoading(true);
+    const dir = (await sGet(kPlatesDirectory)) || [];
+    setLoading(false);
+    const found = dir.filter((p) => norm(p).includes(q));
+    if (found.length === 0) {
+      setErr("找不到符合的車輛，若是第一次使用，請新增車牌");
+      setMatches([]);
+      return;
+    }
+    setMatches(found);
+    if (found.length === 1) selectPlate(found[0]);
+  };
+
+  const selectPlate = async (p) => {
+    setLoading(true);
+    const c = await sGet(kCar(p));
+    setLoading(false);
+    if (!c || !c.users?.length) {
+      setErr("這台車還沒有使用者，請重新新增");
+      return;
+    }
+    setPlate(p);
+    setCar(c);
+    setStep("user");
+  };
+
+  const selectUser = (u) => {
+    setUser(u);
+    setPassword("");
+    setErr("");
+    setStep("password");
+  };
+
+  const submitPassword = () => {
+    if (password === user.password) {
+      onLoggedIn({ plate, userId: user.id, userName: user.name });
+    } else {
+      setErr("密碼不正確");
+    }
+  };
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app flex flex-col">
+      <div className="px-6 pt-14 pb-8 pk-bg-ink pk-text-light pk-hero-radius">
+        <div className="pk-title">PARKING <span className="pk-log-underline">LOG</span></div>
+      </div>
+
+      <div className="flex-1 px-5 pt-6 pb-10">
+        {step === "plate" && (
+          <div>
+            <Field label="車牌（可只輸入後四碼）" required>
+              <input
+                className="pk-input pk-code tracking-widest text-center text-lg"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && search()}
+                placeholder="1234"
+                autoFocus
+              />
+            </Field>
+            <ErrorBox msg={err} />
+            <button onClick={search} disabled={loading} className="pk-btn-dark w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
+              {loading ? <Icon name="loader-2" size={17} className="animate-spin" /> : <Icon name="car" size={17} />}
+              查詢
+            </button>
+
+            {matches.length > 1 && (
+              <div className="mt-4">
+                <p className="text-sm pk-text-muted mb-2">找到多台符合的車，請選擇：</p>
+                <div className="flex flex-col gap-2">
+                  {matches.map((p) => (
+                    <button key={p} onClick={() => selectPlate(p)} className="pk-plate text-left text-base">
+                      {formatPlateDisplay(p)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button onClick={onGoRegister} className="mt-8 w-full flex items-center justify-center gap-1.5 text-sm pk-text-teal font-semibold">
+              <Icon name="plus" size={15} /> 新增車牌
+            </button>
+          </div>
+        )}
+
+        {step === "user" && (
+          <div>
+            <div className="flex justify-center mb-5"><span className="pk-plate text-base">{formatPlateDisplay(plate)}</span></div>
+            <p className="text-sm pk-text-muted mb-3 flex items-center gap-1.5"><Icon name="users" size={14} /> 這是誰在使用？</p>
+            <div className="flex flex-col gap-2.5">
+              {car.users.map((u) => (
+                <button key={u.id} onClick={() => selectUser(u)} className="w-full flex items-center justify-between rounded-xl border pk-border bg-white px-4 py-3.5">
+                  <span className="text-base font-semibold pk-text-strong">{u.name}</span>
+                  <Icon name="arrow-right" size={16} className="pk-text-muted" />
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setStep("plate")} className="mt-6 text-sm pk-text-muted flex items-center gap-1">
+              <Icon name="chevron-left" size={15} /> 返回
+            </button>
+          </div>
+        )}
+
+        {step === "password" && (
+          <div>
+            <div className="flex justify-center mb-2"><span className="pk-plate text-base">{formatPlateDisplay(plate)}</span></div>
+            <p className="text-center text-base font-semibold pk-text-strong mb-5">{user.name}</p>
+            <Field label="個人密碼" required>
+              <input
+                type="password"
+                className="pk-input text-center text-lg tracking-widest"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submitPassword()}
+                autoFocus
+              />
+            </Field>
+            <ErrorBox msg={err} />
+            <button onClick={submitPassword} className="pk-btn-primary w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
+              <Icon name="key" size={17} /> 登入
+            </button>
+            <button onClick={() => setStep("user")} className="mt-5 text-sm pk-text-muted flex items-center gap-1">
+              <Icon name="chevron-left" size={15} /> 返回
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RegisterView({ onDone, onCancel }) {
+  const [plateLetters, setPlateLetters] = useState("");
+  const [plateDigits, setPlateDigits] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [err, setErr] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    setErr("");
+    if (plateLetters.trim().length < 2 || plateDigits.trim().length < 3) return setErr("請輸入完整車牌");
+    if (!name.trim()) return setErr("請輸入使用者名稱");
+    if (password.length < 4 || password.length > 10) return setErr("密碼請設定 4 到 10 碼");
+
+    const plate = `${plateLetters.trim()}-${plateDigits.trim()}`;
+
+    setLoading(true);
+    let car = await sGet(kCar(plate));
+    const user = { id: newId(), name: name.trim(), password };
+
+    if (car) {
+      if (car.users.some((u) => u.name === user.name)) {
+        setLoading(false);
+        return setErr("這台車已經有相同名稱的使用者了，請換一個名稱");
+      }
+      car.users.push(user);
+    } else {
+      car = { plate, users: [user], createdAt: new Date().toISOString() };
+      const dir = (await sGet(kPlatesDirectory)) || [];
+      if (!dir.some((p) => norm(p) === norm(plate))) {
+        dir.push(plate);
+        await sSet(kPlatesDirectory, dir);
+      }
+    }
+    const ok = await sSet(kCar(plate), car);
+    setLoading(false);
+    if (!ok) {
+      setErr("儲存失敗，請檢查網路連線後再試一次");
+      return;
+    }
+    onDone({ plate, userId: user.id, userName: user.name });
+  };
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app flex flex-col">
+      <TopBar title="新增車牌 / 使用者" onBack={onCancel} />
+      <div className="flex-1 px-5 py-6">
+        <p className="text-sm pk-text-muted mb-5">
+          如果車牌已經存在，會直接把這個新使用者加到同一台車底下，你們就能共用同一份紀錄。
+        </p>
+        <Field label="車牌全名" required>
+          <div className="flex items-center gap-2">
+            <input
+              className="pk-input pk-code tracking-widest text-center"
+              value={plateLetters}
+              onChange={(e) => setPlateLetters(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))}
+            />
+            <span className="text-xl font-bold pk-text-muted">-</span>
+            <input
+              className="pk-input pk-code tracking-widest text-center"
+              value={plateDigits}
+              onChange={(e) => setPlateDigits(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+            />
+          </div>
+        </Field>
+        <Field label="使用者名稱" required>
+          <input className="pk-input" value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
+        <Field label="個人密碼" required hint="4 到 10 碼">
+          <input type="password" className="pk-input" value={password} onChange={(e) => setPassword(e.target.value)} />
+        </Field>
+        <ErrorBox msg={err} />
+        <button onClick={submit} disabled={loading} className="pk-btn-primary w-full rounded-xl py-3 text-base flex items-center justify-center gap-2 mt-2">
+          {loading ? <Icon name="loader-2" size={17} className="animate-spin" /> : <Icon name="check" size={17} />}
+          建立
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// parking form (create / edit)
+// ---------------------------------------------------------------------------
+
+function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
+  const isEdit = !!initial;
+  const [datetime, setDatetime] = useState(initial?.datetime || nowLocal());
+  const [parkType, setParkType] = useState(initial?.parkType || "long");
+  const [lotName, setLotName] = useState(initial?.lotName || "");
+  const [selectedMapId, setSelectedMapId] = useState(initial?.mapId || null);
+  const [hotspotId, setHotspotId] = useState(initial?.hotspotId || null);
+  const [hotspotLabel, setHotspotLabel] = useState(initial?.hotspotLabel || null);
+  const [area, setArea] = useState(initial?.area || "");
+  const [spotNumber, setSpotNumber] = useState(initial?.spotNumber || "");
+  const [note, setNote] = useState(initial?.note || "");
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const selectedMap = maps.find((m) => m.id === selectedMapId) || null;
+
+  const pickMap = (m) => {
+    if (selectedMapId === m.id) {
+      setSelectedMapId(null);
+      setHotspotId(null);
+      setHotspotLabel(null);
+      return;
+    }
+    setSelectedMapId(m.id);
+    setLotName((prev) => (prev.trim() === "" ? m.name : prev));
+    setHotspotId(null);
+    setHotspotLabel(null);
+  };
+
+  const submit = async () => {
+    setErr("");
+    if (!lotName.trim()) return setErr("請輸入場名");
+    if (!spotNumber.trim()) return setErr("請輸入車格號碼");
+    setSaving(true);
+    const records = (await sGet(kRecords(plate))) || [];
+    const record = {
+      id: initial?.id || newId(),
+      status: "active",
+      datetime,
+      parkType,
+      lotName: lotName.trim(),
+      mapId: selectedMapId,
+      hotspotId,
+      hotspotLabel,
+      area: area.trim(),
+      spotNumber: spotNumber.trim(),
+      note: note.trim(),
+      createdAt: initial?.createdAt || new Date().toISOString(),
+    };
+    let next;
+    if (isEdit) next = records.map((r) => (r.id === initial.id ? { ...r, ...record } : r));
+    else next = [...records, record];
+
+    const ok = await sSet(kRecords(plate), next);
+    setSaving(false);
+    if (!ok) {
+      setErr("儲存失敗，請檢查網路連線後再試一次");
+      return;
+    }
+    onSaved();
+  };
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app">
+      <TopBar title={title} onBack={onCancel} />
+      <div className="px-5 py-5 pb-10">
+        <Field label="日期時間" required>
+          <input type="datetime-local" className="pk-input" value={datetime} onChange={(e) => setDatetime(e.target.value)} />
+        </Field>
+
+        <Field label="長停 / 臨停" required>
+          <div className="pk-segment">
+            <button type="button" className={parkType === "long" ? "active" : ""} onClick={() => setParkType("long")}>長停</button>
+            <button type="button" className={parkType === "short" ? "active" : ""} onClick={() => setParkType("short")}>臨停</button>
+          </div>
+        </Field>
+
+        <Field label="場名" required>
+          <input className="pk-input" value={lotName} onChange={(e) => setLotName(e.target.value)} />
+        </Field>
+
+        {maps.length > 0 && (
+          <div className="mb-4">
+            <span className="block text-sm font-semibold pk-text-muted-strong mb-1.5">常用停車場（選擇後可用方位圖）</span>
+            <div className="flex gap-2 overflow-x-auto pk-scroll pb-1">
+              {maps.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => pickMap(m)}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold border ${
+                    selectedMapId === m.id ? "pk-bg-ink pk-text-light" : "bg-white pk-text-muted-strong pk-border"
+                  }`}
+                  style={selectedMapId === m.id ? { borderColor: "#023047" } : undefined}
+                >
+                  <Icon name="building" size={14} /> {m.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {selectedMap && (
+          <div className="mb-5">
+            <span className="block text-sm font-semibold pk-text-muted-strong mb-1.5">
+              點選方位圖上的位置（僅輔助，不影響欄位文字）
+            </span>
+            <MapCanvas
+              image={selectedMap.image}
+              hotspots={selectedMap.hotspots}
+              mode="select"
+              selectedId={hotspotId}
+              onSelect={(h) => {
+                setHotspotId(h.id === hotspotId ? null : h.id);
+                setHotspotLabel(h.id === hotspotId ? null : h.label);
+              }}
+            />
+          </div>
+        )}
+
+        <Field label="區域">
+          <input className="pk-input" value={area} onChange={(e) => setArea(e.target.value)} />
+        </Field>
+
+        <Field label="車格號碼" required>
+          <input className="pk-input" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} placeholder="例如：132" />
+        </Field>
+
+        <Field label="備註">
+          <textarea className="pk-input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="其他想記下來的事" />
+        </Field>
+
+        <ErrorBox msg={err} />
+
+        <button onClick={submit} disabled={saving} className="pk-btn-primary w-full rounded-xl py-3.5 text-base flex items-center justify-center gap-2 mt-2">
+          {saving ? <Icon name="loader-2" size={18} className="animate-spin" /> : <Icon name="check" size={18} />}
+          {isEdit ? "儲存變更" : "停好了，記一筆"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// home
+// ---------------------------------------------------------------------------
+
+function HomeView({ session, onLogout, onGoHistory, onGoMaps }) {
+  const [records, setRecords] = useState(null);
+  const [maps, setMaps] = useState([]);
+  const [mode, setMode] = useState("home");
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
+
+  const load = useCallback(async () => {
+    const [r, m] = await Promise.all([loadRecordsPruned(session.plate), sGet(kMaps(session.plate))]);
+    setRecords(r || []);
+    setMaps(m || []);
+  }, [session.plate]);
+
+  useEffect(() => { load(); }, [load, refreshKey]);
+
+  if (records === null) {
+    return (
+      <div className="min-h-screen pk-root pk-bg-app flex items-center justify-center">
+        <Icon name="loader-2" size={26} className="animate-spin pk-text-muted" />
+      </div>
+    );
+  }
+
+  const active = records.find((r) => r.status === "active") || null;
+  const activeMap = active?.mapId ? maps.find((m) => m.id === active.mapId) : null;
+  const statCols = active?.hotspotLabel ? "grid-cols-3" : "grid-cols-2";
+  const elapsedLabel =
+    active && active.parkType === "short" ? formatDuration(Date.now() - new Date(active.datetime).getTime() + tick * 0) : null;
+
+  if (mode === "park") {
+    return (
+      <ParkForm
+        plate={session.plate}
+        maps={maps}
+        title="停車"
+        onCancel={() => setMode("home")}
+        onSaved={() => { setMode("home"); setRefreshKey((k) => k + 1); }}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app">
+      <div className="px-5 pt-14 pb-7 pk-bg-ink pk-text-light pk-hero-radius">
+        <div className="flex items-center justify-between mb-5">
+          <span className="pk-plate text-sm">{formatPlateDisplay(session.plate)}</span>
+          <div className="relative">
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="w-9 h-9 rounded-full pk-bg-teal text-white flex items-center justify-center font-bold text-sm pk-display"
+            >
+              {session.userName.trim().charAt(0)}
+            </button>
+            {menuOpen && (
+              <React.Fragment>
+                <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 mt-2 w-32 bg-white rounded-xl shadow-lg border pk-border py-1 z-30">
+                  <button onClick={onLogout} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
+                    <Icon name="logout" size={14} /> 登出
+                  </button>
+                </div>
+              </React.Fragment>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="px-5 -mt-4">
+        {active ? (
+          <div className="bg-white rounded-2xl border pk-border shadow-sm p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-1.5 pk-text-teal-dark pk-bg-teal-tint text-xs font-semibold px-2.5 py-1 rounded-full w-fit">
+                <Icon name="parking" size={13} /> 停車中
+              </div>
+              <div className="text-xs font-semibold pk-text-muted pk-bg-muted-tint px-2.5 py-1 rounded-full">
+                {active.parkType === "short" ? "臨停" : "長停"}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm pk-text-muted flex items-center gap-1">
+                <Icon name="clock" size={12} /> {fmtDateTime(active.datetime)}
+              </span>
+              <span className="text-sm font-semibold pk-text-muted-strong">{active.lotName}</span>
+            </div>
+
+            <div className={`grid ${statCols} gap-2.5 mb-4`}>
+              <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                <div className="text-xs font-semibold pk-text-orange-label mb-0.5">區域</div>
+                <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.area || "—"}</div>
+              </div>
+              <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                <div className="text-xs font-semibold pk-text-orange-label mb-0.5">車格</div>
+                <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.spotNumber}</div>
+              </div>
+              {active.hotspotLabel && (
+                <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                  <div className="text-xs font-semibold pk-text-orange-label mb-0.5">方位</div>
+                  <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.hotspotLabel}</div>
+                </div>
+              )}
+            </div>
+
+            {elapsedLabel && (
+              <div className="rounded-xl pk-bg-teal-tint px-3.5 py-2.5 mb-4 flex items-center gap-2">
+                <Icon name="clock" size={14} className="pk-text-teal-dark" />
+                <span className="text-sm pk-text-teal-dark font-semibold">已經在這邊待了 {elapsedLabel} 囉</span>
+              </div>
+            )}
+
+            {active.note && <div className="text-xs pk-text-faint italic mb-3.5">{active.note}</div>}
+
+            {activeMap && (
+              <div className="mb-4">
+                <MapCanvas image={activeMap.image} hotspots={activeMap.hotspots} mode="view" selectedId={active.hotspotId} />
+              </div>
+            )}
+
+            <button onClick={() => setMode("pickupConfirm")} className="pk-btn-dark w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
+              <Icon name="car" size={17} /> 取車
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border pk-border shadow-sm p-8 flex flex-col items-center text-center">
+            <div className="w-14 h-14 rounded-full pk-bg-app flex items-center justify-center mb-4">
+              <Icon name="parking" size={26} className="pk-text-muted" />
+            </div>
+            <p className="text-sm pk-text-muted mb-6">現在沒有車在外面停著</p>
+            <button onClick={() => setMode("park")} className="pk-btn-primary w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
+              <Icon name="plus" size={17} /> 停車
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 mt-5 grid grid-cols-2 gap-3 pb-10">
+        <button onClick={onGoHistory} className="bg-white rounded-xl border pk-border py-4 flex flex-col items-center gap-1.5 pk-text-strong">
+          <Icon name="clock" size={19} className="pk-text-teal" />
+          <span className="text-sm font-semibold">歷史紀錄</span>
+        </button>
+        <button onClick={onGoMaps} className="bg-white rounded-xl border pk-border py-4 flex flex-col items-center gap-1.5 pk-text-strong">
+          <Icon name="navigation" size={19} className="pk-text-flame" />
+          <span className="text-sm font-semibold">方位圖管理</span>
+        </button>
+      </div>
+
+      {mode === "pickupConfirm" && (
+        <Confirm
+          title="要去牽車了嗎？"
+          body="牽出來之後，這筆紀錄就會收進歷史紀錄裡。"
+          confirmLabel="牽車去"
+          onCancel={() => setMode("home")}
+          onConfirm={async () => {
+            const next = records.map((r) => (r.id === active.id ? { ...r, status: "done", endTime: new Date().toISOString() } : r));
+            await sSet(kRecords(session.plate), next);
+            setMode("home");
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// history
+// ---------------------------------------------------------------------------
+
+function HistoryView({ session, onBack }) {
+  const [records, setRecords] = useState(null);
+  const [maps, setMaps] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const [r, m] = await Promise.all([loadRecordsPruned(session.plate), sGet(kMaps(session.plate))]);
+      setRecords((r || []).slice().sort((a, b) => new Date(b.datetime) - new Date(a.datetime)));
+      setMaps(m || []);
+    })();
+  }, [session.plate, refreshKey]);
+
+  if (editing) {
+    return (
+      <ParkForm
+        plate={session.plate}
+        maps={maps}
+        title="編輯紀錄"
+        initial={editing}
+        onCancel={() => setEditing(null)}
+        onSaved={() => { setEditing(null); setRefreshKey((k) => k + 1); }}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app">
+      <TopBar title="歷史紀錄" onBack={onBack} />
+      <div className="px-5 py-5">
+        {records === null ? (
+          <div className="flex justify-center py-10"><Icon name="loader-2" size={22} className="animate-spin pk-text-muted" /></div>
+        ) : records.length === 0 ? (
+          <p className="text-center text-sm pk-text-muted py-10">三個月內無停車紀錄</p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {records.map((r) => {
+              const done = r.status !== "active";
+              return (
+                <div key={r.id} className={`rounded-xl border p-4 ${done ? "pk-bg-muted-tint pk-border" : "bg-white pk-border"}`}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${done ? "bg-white pk-text-muted" : "pk-bg-teal-tint pk-text-teal-dark"}`}>
+                      {done ? "已取車" : "停車中"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => setEditing(r)} className={done ? "pk-text-muted" : "pk-text-teal"}><Icon name="pencil" size={16} /></button>
+                      <button onClick={() => setDeleting(r)} className={done ? "pk-text-muted" : "pk-text-danger"}><Icon name="trash" size={16} /></button>
+                    </div>
+                  </div>
+                  <div className="text-xs pk-text-faint mb-1 flex items-center gap-1">
+                    <Icon name="clock" size={12} /> {fmtDateTime(r.datetime)}　{r.lotName}　
+                    <span className={done ? "" : "pk-text-teal"}>{r.parkType === "short" ? "臨停" : "長停"}</span>
+                  </div>
+                  <div className={`text-base ${done ? "pk-text-muted" : "pk-text-strong"}`}>
+                    {r.area && <span className={`font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.area}　</span>}
+                    車格 <span className={`pk-code font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.spotNumber}</span>
+                    {r.hotspotLabel && <span>　方位 <span className={`pk-code font-bold ${done ? "pk-text-muted" : "pk-text-flame"}`}>{r.hotspotLabel}</span></span>}
+                  </div>
+                  {r.note && <div className="text-xs pk-text-faint italic mt-1">{r.note}</div>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      {deleting && (
+        <Confirm
+          title="刪除這筆紀錄？"
+          confirmLabel="刪除"
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            const next = records.filter((r) => r.id !== deleting.id);
+            await sSet(kRecords(session.plate), next);
+            setDeleting(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// maps management
+// ---------------------------------------------------------------------------
+
+function MapEditView({ plate, initial, onCancel, onSaved }) {
+  const isEdit = !!initial;
+  const [name, setName] = useState(initial?.name || "");
+  const [image, setImage] = useState(initial?.image || null);
+  const [hotspots, setHotspots] = useState(initial?.hotspots || []);
+  const [err, setErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [busyImg, setBusyImg] = useState(false);
+  const inputId = "mapImageFile";
+
+  const handleFile = async (file) => {
+    if (!file || busyImg) return;
+    setBusyImg(true);
+    try {
+      const dataUrl = await resizeImageFile(file);
+      setImage(dataUrl);
+      setHotspots([]);
+    } catch (e) {
+      setErr("圖片讀取失敗，請換一張試試");
+    }
+    setBusyImg(false);
+  };
+
+  const addHotspot = (rect) => {
+    const label = ALPHABET[hotspots.length] || `#${hotspots.length + 1}`;
+    setHotspots((prev) => [...prev, { id: newId(), label, ...rect }]);
+  };
+  const deleteHotspot = (id) => setHotspots((prev) => prev.filter((h) => h.id !== id));
+
+  const submit = async () => {
+    setErr("");
+    if (!name.trim()) return setErr("請輸入場名");
+    if (!image) return setErr("請上傳一張照片");
+    setSaving(true);
+    const maps = (await sGet(kMaps(plate))) || [];
+    const record = { id: initial?.id || newId(), name: name.trim(), image, hotspots };
+    const next = isEdit ? maps.map((m) => (m.id === initial.id ? record : m)) : [...maps, record];
+    const ok = await sSet(kMaps(plate), next);
+    setSaving(false);
+    if (!ok) {
+      setErr("儲存失敗，請檢查網路連線後再試一次");
+      return;
+    }
+    onSaved();
+  };
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app">
+      <TopBar title={isEdit ? "編輯方位圖" : "新增方位圖"} onBack={onCancel} />
+      <div className="px-5 py-5 pb-10">
+        <Field label="場名" required>
+          <input className="pk-input" value={name} onChange={(e) => setName(e.target.value)} />
+        </Field>
+
+        <div className="mb-5">
+          <span className="block text-sm font-semibold pk-text-muted-strong mb-1.5">照片</span>
+          {!image ? (
+            <label htmlFor={inputId} className="pk-upload-box w-full rounded-xl border-2 border-dashed pk-border bg-white flex flex-col items-center justify-center gap-2 pk-text-muted" style={{ cursor: "pointer" }}>
+              {busyImg ? <Icon name="loader-2" size={22} className="animate-spin" /> : <Icon name="photo" size={26} />}
+              <span className="text-sm">{busyImg ? "處理中…" : "點此上傳照片"}</span>
+            </label>
+          ) : (
+            <div>
+              <MapCanvas image={image} hotspots={hotspots} mode="edit" onAddHotspot={addHotspot} onDeleteHotspot={deleteHotspot} />
+              <label htmlFor={inputId} className="mt-2.5 text-sm pk-text-teal font-semibold inline-block" style={{ cursor: "pointer" }}>
+                更換照片（會清除目前的方位）
+              </label>
+            </div>
+          )}
+          <input id={inputId} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+        </div>
+
+        {hotspots.length > 0 && (
+          <div className="mb-4">
+            <span className="block text-sm font-semibold pk-text-muted-strong mb-1.5">已建立的方位（{hotspots.length}）</span>
+            <div className="flex flex-wrap gap-2">
+              {hotspots.map((h) => (
+                <span key={h.id} className="pk-code text-sm font-bold px-2.5 py-1 rounded-lg pk-bg-teal-tint pk-text-teal-dark">{h.label}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <ErrorBox msg={err} />
+
+        <button onClick={submit} disabled={saving || busyImg} className="pk-btn-primary w-full rounded-xl py-3.5 text-base flex items-center justify-center gap-2 mt-2">
+          {saving ? <Icon name="loader-2" size={18} className="animate-spin" /> : <Icon name="check" size={18} />}
+          儲存方位圖
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MapsListView({ session, onBack }) {
+  const [maps, setMaps] = useState(null);
+  const [editing, setEditing] = useState(undefined);
+  const [deleting, setDeleting] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      const m = await sGet(kMaps(session.plate));
+      setMaps(m || []);
+    })();
+  }, [session.plate, refreshKey]);
+
+  if (editing !== undefined) {
+    return (
+      <MapEditView
+        plate={session.plate}
+        initial={editing}
+        onCancel={() => setEditing(undefined)}
+        onSaved={() => { setEditing(undefined); setRefreshKey((k) => k + 1); }}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen pk-root pk-bg-app">
+      <TopBar
+        title="方位圖管理"
+        onBack={onBack}
+        right={
+          <button onClick={() => setEditing(null)} className="flex items-center gap-1 text-sm font-semibold pk-bg-flame text-white rounded-full px-3 py-1.5">
+            <Icon name="plus" size={14} /> 新增
+          </button>
+        }
+      />
+      <div className="px-5 py-5">
+        {maps === null ? (
+          <div className="flex justify-center py-10"><Icon name="loader-2" size={22} className="animate-spin pk-text-muted" /></div>
+        ) : maps.length === 0 ? (
+          <div className="text-center py-14">
+            <Icon name="navigation" size={26} className="mx-auto pk-text-muted mb-3" />
+            <p className="text-sm pk-text-muted">還沒有常用停車場方位圖</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {maps.map((m) => (
+              <div key={m.id} className="bg-white rounded-xl border pk-border overflow-hidden flex">
+                <img src={m.image} alt={m.name} className="w-24 h-24 object-cover shrink-0" />
+                <div className="flex-1 p-3.5 flex flex-col justify-between">
+                  <div>
+                    <div className="pk-display text-base font-semibold pk-text-strong">{m.name}</div>
+                    <div className="text-xs pk-text-muted">{m.hotspots.length} 個方位</div>
+                  </div>
+                  <div className="flex gap-4 mt-1">
+                    <button onClick={() => setEditing(m)} className="text-xs pk-text-teal font-semibold flex items-center gap-1"><Icon name="pencil" size={13} /> 編輯</button>
+                    <button onClick={() => setDeleting(m)} className="text-xs pk-text-danger font-semibold flex items-center gap-1"><Icon name="trash" size={13} /> 刪除</button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {deleting && (
+        <Confirm
+          title={`刪除「${deleting.name}」？`}
+          body="已經使用過這張方位圖的歷史紀錄不會被刪除，但會找不到對應的圖。"
+          confirmLabel="刪除"
+          danger
+          onCancel={() => setDeleting(null)}
+          onConfirm={async () => {
+            const next = maps.filter((m) => m.id !== deleting.id);
+            await sSet(kMaps(session.plate), next);
+            setDeleting(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// app root
+// ---------------------------------------------------------------------------
+
+function App() {
+  const [session, setSession] = useState(null);
+  const [authView, setAuthView] = useState("login");
+  const [nav, setNav] = useState("home");
+  const [status, setStatus] = useState(isConfigured ? "checking" : "unconfigured");
+
+  useEffect(() => {
+    if (!isConfigured) return;
+    (async () => {
+      try {
+        const ok = await sSet("__healthcheck__", Date.now());
+        setStatus(ok ? "ready" : "error");
+      } catch (e) {
+        setStatus("error");
+      }
+    })();
+  }, []);
+
+  if (status === "unconfigured") {
+    return (
+      <div className="min-h-screen pk-root pk-bg-app flex flex-col items-center justify-center px-8 text-center">
+        <Icon name="alert-circle" size={28} className="pk-text-danger mb-4" />
+        <p className="text-base font-semibold pk-text-strong mb-2">還沒設定 Firebase</p>
+        <p className="text-sm pk-text-muted">
+          請打開這個檔案裡的 firebaseConfig，貼上你自己 Firebase 專案的設定值，存檔後重新整理頁面。
+        </p>
+      </div>
+    );
+  }
+  if (status === "checking") {
+    return (
+      <div className="min-h-screen pk-root pk-bg-app flex items-center justify-center">
+        <Icon name="loader-2" size={26} className="animate-spin pk-text-muted" />
+      </div>
+    );
+  }
+  if (status === "error") {
+    return (
+      <div className="min-h-screen pk-root pk-bg-app flex flex-col items-center justify-center px-8 text-center">
+        <Icon name="alert-circle" size={28} className="pk-text-danger mb-4" />
+        <p className="text-base font-semibold pk-text-strong mb-2">目前無法連線到資料庫</p>
+        <p className="text-sm pk-text-muted">請確認網路連線，以及 Firestore 的安全性規則是否允許讀寫，然後重新整理頁面。</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return authView === "login"
+      ? <LoginView onLoggedIn={setSession} onGoRegister={() => setAuthView("register")} />
+      : <RegisterView onDone={setSession} onCancel={() => setAuthView("login")} />;
+  }
+
+  return (
+    <div className="pk-root">
+      {nav === "home" && (
+        <HomeView
+          session={session}
+          onLogout={() => { setSession(null); setAuthView("login"); setNav("home"); }}
+          onGoHistory={() => setNav("history")}
+          onGoMaps={() => setNav("maps")}
+        />
+      )}
+      {nav === "history" && <HistoryView session={session} onBack={() => setNav("home")} />}
+      {nav === "maps" && <MapsListView session={session} onBack={() => setNav("home")} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
