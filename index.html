@@ -150,6 +150,7 @@ async function sGet(key) {
     const snap = await db.collection("parkingLog").doc(key).get();
     return snap.exists ? snap.data().value : null;
   } catch (e) {
+    console.error("Firestore read failed for", key, e);
     return null;
   }
 }
@@ -158,6 +159,7 @@ async function sSet(key, value) {
     await db.collection("parkingLog").doc(key).set({ value, updatedAt: Date.now() });
     return true;
   } catch (e) {
+    console.error("Firestore write failed for", key, e);
     return false;
   }
 }
@@ -1298,6 +1300,7 @@ function App() {
         const ok = await sSet("__healthcheck__", Date.now());
         setStatus(ok ? "ready" : "error");
       } catch (e) {
+        console.error("Firestore healthcheck failed", e);
         setStatus("error");
       }
     })();
