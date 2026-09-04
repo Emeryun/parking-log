@@ -907,20 +907,20 @@ function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 mb-4">
-              {active.floor && (
-                <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
-                  <div className="text-xs font-semibold pk-text-orange-label mb-0.5">樓層</div>
-                  <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.floor}</div>
-                </div>
-              )}
+              <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                <div className="text-xs font-semibold pk-text-orange-label mb-0.5">樓層</div>
+                <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.floor || "—"}</div>
+              </div>
               <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
                 <div className="text-xs font-semibold pk-text-orange-label mb-0.5">車格</div>
                 <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.spotNumber}</div>
               </div>
-              <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
-                <div className="text-xs font-semibold pk-text-orange-label mb-0.5">區域</div>
-                <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.area || "—"}</div>
-              </div>
+              {active.area && (
+                <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
+                  <div className="text-xs font-semibold pk-text-orange-label mb-0.5">區域</div>
+                  <div className="pk-code text-xl font-bold pk-text-flame truncate">{active.area}</div>
+                </div>
+              )}
               {active.hotspotLabel && (
                 <div className="rounded-xl pk-bg-orange-tint px-3 py-3">
                   <div className="text-xs font-semibold pk-text-orange-label mb-0.5">方位</div>
