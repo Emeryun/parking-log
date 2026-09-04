@@ -610,7 +610,7 @@ function LandingView({ onEnter, onGoHelp }) {
                 <div
                   key={p}
                   className="flex items-center justify-between gap-1.5 rounded-full pl-3.5 pr-2 py-2"
-                  style={{ background: i % 2 === 0 ? "#023047" : "#219EBC" }}
+                  style={{ background: ["#023047", "#146C86", "#219EBC"][i % 3] }}
                 >
                   <button onClick={() => enter(p)} className="pk-code text-white font-bold text-sm tracking-wide truncate">
                     {formatPlateDisplay(p)}
@@ -706,19 +706,19 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
   const pickMap = (m) => {
     if (selectedMapId === m.id) {
       setSelectedMapId(null);
+      setLotName("");
       setHotspotId(null);
       setHotspotLabel(null);
       return;
     }
     setSelectedMapId(m.id);
-    setLotName((prev) => (prev.trim() === "" ? m.name : prev));
+    setLotName(m.name);
     setHotspotId(null);
     setHotspotLabel(null);
   };
 
   const submit = async () => {
     setErr("");
-    if (!lotName.trim()) return setErr("請輸入場名");
     if (!spotNumber.trim()) return setErr("請輸入車格號碼");
     setSaving(true);
     const records = (await sGet(kRecords(plate))) || [];
@@ -765,10 +765,6 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
           </div>
         </Field>
 
-        <Field label="場名" required>
-          <input className="pk-input" value={lotName} onChange={(e) => setLotName(e.target.value)} />
-        </Field>
-
         {maps.length > 0 && (
           <div className="mb-4">
             <span className="block text-sm font-semibold pk-text-muted-strong mb-1.5">常用停車場（選擇後可用方位圖）</span>
@@ -808,13 +804,14 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
           </div>
         )}
 
-        <Field label="樓層">
-          <input className="pk-input" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="例如：B3" />
-        </Field>
-
-        <Field label="車格號碼" required>
-          <input className="pk-input" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} placeholder="例如：132" />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="樓層">
+            <input className="pk-input" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="例如：B3" />
+          </Field>
+          <Field label="車格號碼" required>
+            <input className="pk-input" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} placeholder="例如：132" />
+          </Field>
+        </div>
 
         <Field label="區域">
           <input className="pk-input" value={area} onChange={(e) => setArea(e.target.value)} />
@@ -931,7 +928,7 @@ function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps, onGoHelp }) {
               <div className="text-sm pk-text-muted flex items-center gap-1 mb-0.5">
                 <Icon name="clock" size={12} /> {fmtDateTime(active.datetime)}
               </div>
-              <div className="text-sm font-semibold pk-text-muted-strong">{active.lotName}</div>
+              {active.lotName && <div className="text-sm font-semibold pk-text-muted-strong">{active.lotName}</div>}
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 mb-4">
@@ -1074,7 +1071,7 @@ function HistoryView({ plate, onBack }) {
                     </div>
                   </div>
                   <div className="text-xs pk-text-faint mb-1 flex items-center gap-1">
-                    <Icon name="clock" size={12} /> {fmtDateTime(r.datetime)}　{r.lotName}　
+                    <Icon name="clock" size={12} /> {fmtDateTime(r.datetime)}{r.lotName ? `　${r.lotName}` : ""}　
                     <span className={done ? "" : "pk-text-teal"}>{r.parkType === "short" ? "臨停" : "長停"}</span>
                   </div>
                   <div className={`text-base ${done ? "pk-text-muted" : "pk-text-strong"}`}>
