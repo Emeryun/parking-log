@@ -801,10 +801,10 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="樓層">
-            <input className="pk-input" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="例如：B3" />
+            <input className="pk-input" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="" />
           </Field>
           <Field label="車格號碼" required>
-            <input className="pk-input" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} placeholder="例如：132" />
+            <input className="pk-input" value={spotNumber} onChange={(e) => setSpotNumber(e.target.value)} placeholder="" />
           </Field>
         </div>
 
