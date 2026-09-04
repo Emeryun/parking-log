@@ -571,7 +571,7 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
 // landing — pick a recently-used plate (this device only) or type a new one
 // ---------------------------------------------------------------------------
 
-function LandingView({ onEnter, onGoHelp }) {
+function LandingView({ onEnter }) {
   const [recents, setRecents] = useState(loadRecents());
   const [adding, setAdding] = useState(recents.length === 0);
   const [plateLetters, setPlateLetters] = useState("");
@@ -593,12 +593,7 @@ function LandingView({ onEnter, onGoHelp }) {
   return (
     <div className="min-h-screen pk-root pk-bg-app flex flex-col">
       <div className="px-6 pt-8 pb-8 pk-bg-ink pk-text-light pk-hero-radius">
-        <div className="flex items-center justify-between">
-          <div className="pk-title">PARKING <span className="pk-log-underline">LOG</span></div>
-          <button onClick={onGoHelp} className="w-9 h-9 rounded-full pk-bg-white-tint flex items-center justify-center shrink-0">
-            <Icon name="help-circle" size={18} />
-          </button>
-        </div>
+        <div className="pk-title">PARKING <span className="pk-log-underline">LOG</span></div>
       </div>
 
       <div className="flex-1 px-5 pt-6 pb-10">
@@ -813,12 +808,8 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
           </Field>
         </div>
 
-        <Field label="區域">
-          <input className="pk-input" value={area} onChange={(e) => setArea(e.target.value)} />
-        </Field>
-
         <Field label="備註">
-          <textarea className="pk-input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="其他想記下來的事" />
+          <textarea className="pk-input" rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="場名、區域等各種資訊都可以寫在這裡" />
         </Field>
 
         <ErrorBox msg={err} />
@@ -836,12 +827,11 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
 // home
 // ---------------------------------------------------------------------------
 
-function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps, onGoHelp }) {
+function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps }) {
   const [records, setRecords] = useState(null);
   const [maps, setMaps] = useState([]);
   const [mode, setMode] = useState("home");
   const [refreshKey, setRefreshKey] = useState(0);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -888,27 +878,12 @@ function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps, onGoHelp }) {
         <div className="pk-title-sm mb-4">PARKING <span className="pk-log-underline" style={{ borderBottomWidth: 2 }}>LOG</span></div>
         <div className="flex items-center justify-between mb-5">
           <span className="pk-plate text-sm">{formatPlateDisplay(plate)}</span>
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              className="w-9 h-9 rounded-full pk-bg-white-tint text-white flex items-center justify-center"
-            >
-              <Icon name="dots" size={18} />
-            </button>
-            {menuOpen && (
-              <React.Fragment>
-                <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border pk-border py-1 z-30">
-                  <button onClick={onSwitchCar} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
-                    <Icon name="repeat" size={14} /> 切換車牌
-                  </button>
-                  <button onClick={onGoHelp} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
-                    <Icon name="help-circle" size={14} /> 使用說明
-                  </button>
-                </div>
-              </React.Fragment>
-            )}
-          </div>
+          <button
+            onClick={onSwitchCar}
+            className="w-9 h-9 rounded-full pk-bg-white-tint text-white flex items-center justify-center"
+          >
+            <Icon name="repeat" size={16} />
+          </button>
         </div>
       </div>
 
@@ -1299,88 +1274,12 @@ function MapsListView({ plate, onBack }) {
 }
 
 // ---------------------------------------------------------------------------
-// help / how-to-use
-// ---------------------------------------------------------------------------
-
-function HelpStep({ icon, title, desc, note, bullets }) {
-  return (
-    <div className="flex gap-3.5 mb-6">
-      <div className="shrink-0 w-11 h-11 rounded-full pk-bg-teal-tint flex items-center justify-center">
-        <Icon name={icon} size={19} className="pk-text-teal-dark" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="pk-display text-base font-semibold pk-text-strong mb-1">{title}</div>
-        <div className="text-sm pk-text-muted-strong leading-relaxed">{desc}</div>
-        {bullets && (
-          <div className="mt-2.5 flex flex-col gap-1.5">
-            {bullets.map((b, i) => (
-              <div key={i} className="flex items-start gap-2">
-                <span className="shrink-0 w-1 h-1 rounded-full pk-bg-teal mt-2" />
-                <span className="text-[13px] leading-relaxed">
-                  <span className="font-semibold pk-text-teal-dark">{b.label}</span>
-                  <span className="pk-text-muted"> — {b.result}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
-        {note && <div className="text-xs pk-text-faint leading-relaxed mt-2">{note}</div>}
-      </div>
-    </div>
-  );
-}
-
-function HelpView({ onBack }) {
-  return (
-    <div className="min-h-screen pk-root pk-bg-app">
-      <TopBar title="使用說明" onBack={onBack} />
-      <div className="px-5 py-6">
-        <HelpStep
-          icon="car"
-          title="選擇或新增車牌"
-          desc="常用車牌會列在首頁，點一下就能直接進入。新增時輸入完整車牌即可，不需要帳號或密碼。"
-          note="車牌是唯一的存取方式，別把完整車牌告訴不想分享的人。常用清單只存在這支手機，換手機需要重新輸入一次。"
-        />
-        <HelpStep
-          icon="parking"
-          title="停車"
-          desc="點擊「停車」，填寫停車相關資訊（場名、車格號碼等）。"
-          bullets={[
-            { label: "常用停車場", result: "可選擇方位圖位置" },
-            { label: "臨停", result: "可顯示停放累積時間" },
-          ]}
-        />
-        <HelpStep
-          icon="car"
-          title="取車"
-          desc="點擊「取車」，這筆紀錄就會收進歷史紀錄。"
-          note="同時可以再開始下一次停車。"
-        />
-        <HelpStep
-          icon="map-pin"
-          title="常用停車場"
-          desc={<React.Fragment>透過「方位圖管理」可建立常用停車場平面圖。<br />上傳照片 ➜ 拖曳畫出多個區域 ➜ 點一下設定定位點（例如電梯）。</React.Fragment>}
-          note="這樣取車時就可以快速知道停車方向。"
-        />
-        <HelpStep
-          icon="clock"
-          title="歷史紀錄"
-          desc="所有停過的紀錄都在這裡，可以編輯或刪除。"
-          note="已取車超過三個月的紀錄會自動清除。"
-        />
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // app root
 // ---------------------------------------------------------------------------
 
 function App() {
   const [currentPlate, setCurrentPlate] = useState(null);
   const [nav, setNav] = useState("home");
-  const [showHelp, setShowHelp] = useState(false);
   const [status, setStatus] = useState(isConfigured ? "checking" : "unconfigured");
 
   useEffect(() => {
@@ -1424,18 +1323,10 @@ function App() {
     );
   }
 
-  if (showHelp) {
-    return (
-      <div className="pk-root">
-        <HelpView onBack={() => setShowHelp(false)} />
-      </div>
-    );
-  }
-
   if (!currentPlate) {
     return (
       <div className="pk-root">
-        <LandingView onEnter={setCurrentPlate} onGoHelp={() => setShowHelp(true)} />
+        <LandingView onEnter={setCurrentPlate} />
       </div>
     );
   }
@@ -1448,7 +1339,6 @@ function App() {
           onSwitchCar={() => { setCurrentPlate(null); setNav("home"); }}
           onGoHistory={() => setNav("history")}
           onGoMaps={() => setNav("maps")}
-          onGoHelp={() => setShowHelp(true)}
         />
       )}
       {nav === "history" && <HistoryView plate={currentPlate} onBack={() => setNav("home")} />}
