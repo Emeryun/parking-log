@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Parking Log｜家用停車紀錄</title>
-<meta name="description" content="記錄家人的停車位置、樓層與車格，登入後可查詢、編輯，並管理常用停車場的方位圖。" />
-<meta property="og:title" content="Parking Log｜家用停車紀錄" />
-<meta property="og:description" content="記錄家人的停車位置、樓層與車格，登入後可查詢、編輯，並管理常用停車場的方位圖。" />
+<title>Parking Log｜停車紀錄</title>
+<meta name="description" content="記錄停車位置、樓層與車格，可查詢、編輯，並管理常用停車場的方位圖。" />
+<meta property="og:title" content="Parking Log｜停車紀錄" />
+<meta property="og:description" content="記錄停車位置、樓層與車格，可查詢、編輯，並管理常用停車場的方位圖。" />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23023047'/%3E%3Ctext x='50' y='68' font-family='Arial' font-size='58' font-weight='bold' fill='%23FB8500' text-anchor='middle'%3EP%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.17.0/dist/tabler-icons.min.css" />
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
-  html { font-size: 130%; }
+  html { font-size: 118%; }
   body { margin: 0; }
   .pk-root { font-family: 'Inter', system-ui, sans-serif; }
   .pk-display { font-family: 'Oswald', system-ui, sans-serif; letter-spacing: 0.02em; }
@@ -592,7 +592,7 @@ function LandingView({ onEnter, onGoHelp }) {
 
   return (
     <div className="min-h-screen pk-root pk-bg-app flex flex-col">
-      <div className="px-6 pt-14 pb-8 pk-bg-ink pk-text-light pk-hero-radius">
+      <div className="px-6 pt-8 pb-8 pk-bg-ink pk-text-light pk-hero-radius">
         <div className="flex items-center justify-between">
           <div className="pk-title">PARKING <span className="pk-log-underline">LOG</span></div>
           <button onClick={onGoHelp} className="w-9 h-9 rounded-full pk-bg-white-tint flex items-center justify-center shrink-0">
@@ -605,10 +605,14 @@ function LandingView({ onEnter, onGoHelp }) {
         {recents.length > 0 && (
           <div className="mb-6">
             <span className="block text-sm font-semibold pk-text-muted-strong mb-2.5">常用車牌</span>
-            <div className="flex flex-wrap gap-2.5">
-              {recents.map((p) => (
-                <div key={p} className="flex items-center gap-1.5 rounded-full pk-bg-ink pl-4 pr-2 py-2">
-                  <button onClick={() => enter(p)} className="pk-code text-white font-bold text-sm tracking-wide">
+            <div className="grid grid-cols-2 gap-2.5">
+              {recents.map((p, i) => (
+                <div
+                  key={p}
+                  className="flex items-center justify-between gap-1.5 rounded-full pl-3.5 pr-2 py-2"
+                  style={{ background: i % 2 === 0 ? "#023047" : "#219EBC" }}
+                >
+                  <button onClick={() => enter(p)} className="pk-code text-white font-bold text-sm tracking-wide truncate">
                     {formatPlateDisplay(p)}
                   </button>
                   <button
@@ -883,14 +887,14 @@ function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps, onGoHelp }) {
 
   return (
     <div className="min-h-screen pk-root pk-bg-app">
-      <div className="px-5 pt-14 pb-7 pk-bg-ink pk-text-light pk-hero-radius">
+      <div className="px-5 pt-8 pb-7 pk-bg-ink pk-text-light pk-hero-radius">
         <div className="pk-title-sm mb-4">PARKING <span className="pk-log-underline" style={{ borderBottomWidth: 2 }}>LOG</span></div>
         <div className="flex items-center justify-between mb-5">
           <span className="pk-plate text-sm">{formatPlateDisplay(plate)}</span>
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="w-9 h-9 rounded-full pk-bg-teal text-white flex items-center justify-center"
+              className="w-9 h-9 rounded-full pk-bg-white-tint text-white flex items-center justify-center"
             >
               <Icon name="dots" size={18} />
             </button>
