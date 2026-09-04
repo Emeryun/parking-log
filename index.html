@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>Parking Log｜停車紀錄</title>
-<meta name="description" content="記錄停車位置、樓層與車格，登入後可查詢、編輯，並管理常用停車場的平面圖。" />
-<meta property="og:title" content="Parking Log｜停車紀錄" />
-<meta property="og:description" content="記錄停車位置、樓層與車格，登入後可查詢、編輯，並管理常用停車場的平面圖。" />
+<title>Parking Log｜家用停車紀錄</title>
+<meta name="description" content="記錄家人的停車位置、樓層與車格，登入後可查詢、編輯，並管理常用停車場的方位圖。" />
+<meta property="og:title" content="Parking Log｜家用停車紀錄" />
+<meta property="og:description" content="記錄家人的停車位置、樓層與車格，登入後可查詢、編輯，並管理常用停車場的方位圖。" />
 <meta property="og:type" content="website" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23023047'/%3E%3Ctext x='50' y='68' font-family='Arial' font-size='58' font-weight='bold' fill='%23FB8500' text-anchor='middle'%3EP%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@600;700&display=swap" />
@@ -200,10 +200,32 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 const norm = (s) => (s || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 const plateKeyPart = (plate) => norm(plate);
 
-const kPlatesDirectory = "plates_directory";
-const kCar = (plate) => `car_${plateKeyPart(plate)}`;
 const kRecords = (plate) => `records_${plateKeyPart(plate)}`;
 const kMaps = (plate) => `maps_${plateKeyPart(plate)}`;
+
+// locally-remembered plates — lives only on this device/browser, never synced,
+// so nobody else who opens the site can see which plates you've used
+const RECENTS_KEY = "pk_recent_plates";
+function loadRecents() {
+  try {
+    return JSON.parse(localStorage.getItem(RECENTS_KEY) || "[]");
+  } catch (e) {
+    return [];
+  }
+}
+function saveRecents(list) {
+  try {
+    localStorage.setItem(RECENTS_KEY, JSON.stringify(list));
+  } catch (e) {}
+}
+function addRecent(plate) {
+  const list = loadRecents().filter((p) => norm(p) !== norm(plate));
+  list.unshift(plate);
+  saveRecents(list.slice(0, 12));
+}
+function removeRecent(plate) {
+  saveRecents(loadRecents().filter((p) => norm(p) !== norm(plate)));
+}
 
 function nowLocal() {
   const d = new Date();
@@ -546,66 +568,26 @@ function MapCanvas({ image, hotspots, mode, selectedId, onSelect, onAddHotspot, 
 }
 
 // ---------------------------------------------------------------------------
-// login / register
+// landing — pick a recently-used plate (this device only) or type a new one
 // ---------------------------------------------------------------------------
 
-function LoginView({ onLoggedIn, onGoRegister, onGoHelp }) {
-  const [step, setStep] = useState("plate");
-  const [input, setInput] = useState("");
-  const [matches, setMatches] = useState([]);
-  const [plate, setPlate] = useState(null);
-  const [car, setCar] = useState(null);
-  const [user, setUser] = useState(null);
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+function LandingView({ onEnter, onGoHelp }) {
+  const [recents, setRecents] = useState(loadRecents());
+  const [adding, setAdding] = useState(recents.length === 0);
+  const [plateLetters, setPlateLetters] = useState("");
+  const [plateDigits, setPlateDigits] = useState("");
   const [err, setErr] = useState("");
+  const [removing, setRemoving] = useState(null);
 
-  const search = async () => {
+  const enter = (plate) => {
+    addRecent(plate);
+    onEnter(plate);
+  };
+
+  const submitNew = () => {
     setErr("");
-    const q = norm(input);
-    if (q.length < 2) {
-      setErr("請輸入至少 2 碼");
-      return;
-    }
-    setLoading(true);
-    const dir = (await sGet(kPlatesDirectory)) || [];
-    setLoading(false);
-    const found = dir.filter((p) => norm(p).includes(q));
-    if (found.length === 0) {
-      setErr("找不到符合的車輛，若是第一次使用，請新增車牌");
-      setMatches([]);
-      return;
-    }
-    setMatches(found);
-    if (found.length === 1) selectPlate(found[0]);
-  };
-
-  const selectPlate = async (p) => {
-    setLoading(true);
-    const c = await sGet(kCar(p));
-    setLoading(false);
-    if (!c || !c.users?.length) {
-      setErr("這台車還沒有使用者，請重新新增");
-      return;
-    }
-    setPlate(p);
-    setCar(c);
-    setStep("user");
-  };
-
-  const selectUser = (u) => {
-    setUser(u);
-    setPassword("");
-    setErr("");
-    setStep("password");
-  };
-
-  const submitPassword = () => {
-    if (password === user.password) {
-      onLoggedIn({ plate, userId: user.id, userName: user.name });
-    } else {
-      setErr("密碼不正確");
-    }
+    if (plateLetters.trim().length < 2 || plateDigits.trim().length < 3) return setErr("請輸入完整車牌");
+    enter(`${plateLetters.trim()}-${plateDigits.trim()}`);
   };
 
   return (
@@ -620,166 +602,78 @@ function LoginView({ onLoggedIn, onGoRegister, onGoHelp }) {
       </div>
 
       <div className="flex-1 px-5 pt-6 pb-10">
-        {step === "plate" && (
-          <div>
-            <Field label="車牌（可只輸入後四碼）" required>
-              <input
-                className="pk-input pk-code tracking-widest text-center text-lg"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && search()}
-                placeholder="1234"
-                autoFocus
-              />
-            </Field>
-            <ErrorBox msg={err} />
-            <button onClick={search} disabled={loading} className="pk-btn-dark w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
-              {loading ? <Icon name="loader-2" size={17} className="animate-spin" /> : <Icon name="car" size={17} />}
-              查詢
-            </button>
-
-            {matches.length > 1 && (
-              <div className="mt-4">
-                <p className="text-sm pk-text-muted mb-2">找到多台符合的車，請選擇：</p>
-                <div className="flex flex-col gap-2">
-                  {matches.map((p) => (
-                    <button key={p} onClick={() => selectPlate(p)} className="pk-plate text-left text-base">
-                      {formatPlateDisplay(p)}
-                    </button>
-                  ))}
+        {recents.length > 0 && (
+          <div className="mb-6">
+            <span className="block text-sm font-semibold pk-text-muted-strong mb-2.5">常用車牌</span>
+            <div className="flex flex-wrap gap-2.5">
+              {recents.map((p) => (
+                <div key={p} className="flex items-center gap-1.5 rounded-full pk-bg-ink pl-4 pr-2 py-2">
+                  <button onClick={() => enter(p)} className="pk-code text-white font-bold text-sm tracking-wide">
+                    {formatPlateDisplay(p)}
+                  </button>
+                  <button
+                    onClick={() => setRemoving(p)}
+                    className="w-6 h-6 rounded-full pk-bg-white-tint flex items-center justify-center shrink-0"
+                  >
+                    <Icon name="x" size={13} className="text-white" />
+                  </button>
                 </div>
-              </div>
-            )}
-
-            <button onClick={onGoRegister} className="mt-8 w-full flex items-center justify-center gap-1.5 text-sm pk-text-teal font-semibold">
-              <Icon name="plus" size={15} /> 新增車牌
-            </button>
-          </div>
-        )}
-
-        {step === "user" && (
-          <div>
-            <div className="flex justify-center mb-5"><span className="pk-plate text-base">{formatPlateDisplay(plate)}</span></div>
-            <p className="text-sm pk-text-muted mb-3 flex items-center gap-1.5"><Icon name="users" size={14} /> 這是誰在使用？</p>
-            <div className="flex flex-col gap-2.5">
-              {car.users.map((u) => (
-                <button key={u.id} onClick={() => selectUser(u)} className="w-full flex items-center justify-between rounded-xl border pk-border bg-white px-4 py-3.5">
-                  <span className="text-base font-semibold pk-text-strong">{u.name}</span>
-                  <Icon name="arrow-right" size={16} className="pk-text-muted" />
-                </button>
               ))}
             </div>
-            <button onClick={() => setStep("plate")} className="mt-6 text-sm pk-text-muted flex items-center gap-1">
-              <Icon name="chevron-left" size={15} /> 返回
-            </button>
           </div>
         )}
 
-        {step === "password" && (
+        {!adding ? (
+          <button onClick={() => setAdding(true)} className="w-full flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed pk-border py-3.5 text-sm pk-text-teal font-semibold">
+            <Icon name="plus" size={16} /> 新增車牌
+          </button>
+        ) : (
           <div>
-            <div className="flex justify-center mb-2"><span className="pk-plate text-base">{formatPlateDisplay(plate)}</span></div>
-            <p className="text-center text-base font-semibold pk-text-strong mb-5">{user.name}</p>
-            <Field label="個人密碼" required>
-              <input
-                type="password"
-                className="pk-input text-center text-lg tracking-widest"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitPassword()}
-                autoFocus
-              />
+            <Field label="車牌全名" required>
+              <div className="flex items-center gap-2">
+                <input
+                  className="pk-input pk-code tracking-widest text-center"
+                  value={plateLetters}
+                  onChange={(e) => setPlateLetters(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))}
+                  onKeyDown={(e) => e.key === "Enter" && submitNew()}
+                  autoFocus
+                />
+                <span className="text-xl font-bold pk-text-muted">-</span>
+                <input
+                  className="pk-input pk-code tracking-widest text-center"
+                  value={plateDigits}
+                  onChange={(e) => setPlateDigits(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+                  onKeyDown={(e) => e.key === "Enter" && submitNew()}
+                />
+              </div>
             </Field>
             <ErrorBox msg={err} />
-            <button onClick={submitPassword} className="pk-btn-primary w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
-              <Icon name="key" size={17} /> 登入
+            <button onClick={submitNew} className="pk-btn-primary w-full rounded-xl py-3 text-base flex items-center justify-center gap-2">
+              <Icon name="arrow-right" size={17} /> 進入
             </button>
-            <button onClick={() => setStep("user")} className="mt-5 text-sm pk-text-muted flex items-center gap-1">
-              <Icon name="chevron-left" size={15} /> 返回
-            </button>
+            {recents.length > 0 && (
+              <button onClick={() => { setAdding(false); setErr(""); }} className="mt-4 w-full text-sm pk-text-muted flex items-center justify-center gap-1">
+                取消
+              </button>
+            )}
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function RegisterView({ onDone, onCancel }) {
-  const [plateLetters, setPlateLetters] = useState("");
-  const [plateDigits, setPlateDigits] = useState("");
-  const [name, setName] = useState("");
-  const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const submit = async () => {
-    setErr("");
-    if (plateLetters.trim().length < 2 || plateDigits.trim().length < 3) return setErr("請輸入完整車牌");
-    if (!name.trim()) return setErr("請輸入使用者名稱");
-    if (password.length < 4 || password.length > 10) return setErr("密碼請設定 4 到 10 碼");
-
-    const plate = `${plateLetters.trim()}-${plateDigits.trim()}`;
-
-    setLoading(true);
-    let car = await sGet(kCar(plate));
-    const user = { id: newId(), name: name.trim(), password };
-
-    if (car) {
-      if (car.users.some((u) => u.name === user.name)) {
-        setLoading(false);
-        return setErr("這台車已經有相同名稱的使用者了，請換一個名稱");
-      }
-      car.users.push(user);
-    } else {
-      car = { plate, users: [user], createdAt: new Date().toISOString() };
-      const dir = (await sGet(kPlatesDirectory)) || [];
-      if (!dir.some((p) => norm(p) === norm(plate))) {
-        dir.push(plate);
-        await sSet(kPlatesDirectory, dir);
-      }
-    }
-    const ok = await sSet(kCar(plate), car);
-    setLoading(false);
-    if (!ok) {
-      setErr("儲存失敗，請檢查網路連線後再試一次");
-      return;
-    }
-    onDone({ plate, userId: user.id, userName: user.name });
-  };
-
-  return (
-    <div className="min-h-screen pk-root pk-bg-app flex flex-col">
-      <TopBar title="新增車牌 / 使用者" onBack={onCancel} />
-      <div className="flex-1 px-5 py-6">
-        <p className="text-sm pk-text-muted mb-5">
-          如果車牌已經存在，會直接把這個新使用者加到同一台車底下，你們就能共用同一份紀錄。
-        </p>
-        <Field label="車牌全名" required>
-          <div className="flex items-center gap-2">
-            <input
-              className="pk-input pk-code tracking-widest text-center"
-              value={plateLetters}
-              onChange={(e) => setPlateLetters(e.target.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 4))}
-            />
-            <span className="text-xl font-bold pk-text-muted">-</span>
-            <input
-              className="pk-input pk-code tracking-widest text-center"
-              value={plateDigits}
-              onChange={(e) => setPlateDigits(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
-            />
-          </div>
-        </Field>
-        <Field label="使用者名稱" required>
-          <input className="pk-input" value={name} onChange={(e) => setName(e.target.value)} />
-        </Field>
-        <Field label="個人密碼" required hint="4 到 10 碼">
-          <input type="password" className="pk-input" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </Field>
-        <ErrorBox msg={err} />
-        <button onClick={submit} disabled={loading} className="pk-btn-primary w-full rounded-xl py-3 text-base flex items-center justify-center gap-2 mt-2">
-          {loading ? <Icon name="loader-2" size={17} className="animate-spin" /> : <Icon name="check" size={17} />}
-          建立
-        </button>
-      </div>
+      {removing && (
+        <Confirm
+          title={`移除「${formatPlateDisplay(removing)}」？`}
+          body="只會從這支手機的常用清單移除，這台車原本的停車紀錄不會受影響。"
+          confirmLabel="移除"
+          danger
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => {
+            removeRecent(removing);
+            setRecents(loadRecents());
+            setRemoving(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -941,7 +835,7 @@ function ParkForm({ plate, maps, initial, onCancel, onSaved, title }) {
 // home
 // ---------------------------------------------------------------------------
 
-function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
+function HomeView({ plate, onSwitchCar, onGoHistory, onGoMaps, onGoHelp }) {
   const [records, setRecords] = useState(null);
   const [maps, setMaps] = useState([]);
   const [mode, setMode] = useState("home");
@@ -955,10 +849,10 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
   }, []);
 
   const load = useCallback(async () => {
-    const [r, m] = await Promise.all([loadRecordsPruned(session.plate), sGet(kMaps(session.plate))]);
+    const [r, m] = await Promise.all([loadRecordsPruned(plate), sGet(kMaps(plate))]);
     setRecords(r || []);
     setMaps(m || []);
-  }, [session.plate]);
+  }, [plate]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
 
@@ -978,7 +872,7 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
   if (mode === "park") {
     return (
       <ParkForm
-        plate={session.plate}
+        plate={plate}
         maps={maps}
         title="停車"
         onCancel={() => setMode("home")}
@@ -992,23 +886,23 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
       <div className="px-5 pt-14 pb-7 pk-bg-ink pk-text-light pk-hero-radius">
         <div className="pk-title-sm mb-4">PARKING <span className="pk-log-underline" style={{ borderBottomWidth: 2 }}>LOG</span></div>
         <div className="flex items-center justify-between mb-5">
-          <span className="pk-plate text-sm">{formatPlateDisplay(session.plate)}</span>
+          <span className="pk-plate text-sm">{formatPlateDisplay(plate)}</span>
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
-              className="w-9 h-9 rounded-full pk-bg-teal text-white flex items-center justify-center font-bold text-sm pk-display"
+              className="w-9 h-9 rounded-full pk-bg-teal text-white flex items-center justify-center"
             >
-              {session.userName.trim().charAt(0)}
+              <Icon name="dots" size={18} />
             </button>
             {menuOpen && (
               <React.Fragment>
                 <div className="fixed inset-0 z-20" onClick={() => setMenuOpen(false)} />
                 <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-lg border pk-border py-1 z-30">
+                  <button onClick={onSwitchCar} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
+                    <Icon name="repeat" size={14} /> 切換車牌
+                  </button>
                   <button onClick={onGoHelp} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
                     <Icon name="help-circle" size={14} /> 使用說明
-                  </button>
-                  <button onClick={onLogout} className="w-full text-left px-3.5 py-2.5 text-sm pk-text-muted-strong flex items-center gap-2">
-                    <Icon name="logout" size={14} /> 登出
                   </button>
                 </div>
               </React.Fragment>
@@ -1110,7 +1004,7 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
           onCancel={() => setMode("home")}
           onConfirm={async () => {
             const next = records.map((r) => (r.id === active.id ? { ...r, status: "done", endTime: new Date().toISOString() } : r));
-            await sSet(kRecords(session.plate), next);
+            await sSet(kRecords(plate), next);
             setMode("home");
             setRefreshKey((k) => k + 1);
           }}
@@ -1124,7 +1018,7 @@ function HomeView({ session, onLogout, onGoHistory, onGoMaps, onGoHelp }) {
 // history
 // ---------------------------------------------------------------------------
 
-function HistoryView({ session, onBack }) {
+function HistoryView({ plate, onBack }) {
   const [records, setRecords] = useState(null);
   const [maps, setMaps] = useState([]);
   const [editing, setEditing] = useState(null);
@@ -1133,16 +1027,16 @@ function HistoryView({ session, onBack }) {
 
   useEffect(() => {
     (async () => {
-      const [r, m] = await Promise.all([loadRecordsPruned(session.plate), sGet(kMaps(session.plate))]);
+      const [r, m] = await Promise.all([loadRecordsPruned(plate), sGet(kMaps(plate))]);
       setRecords((r || []).slice().sort((a, b) => new Date(b.datetime) - new Date(a.datetime)));
       setMaps(m || []);
     })();
-  }, [session.plate, refreshKey]);
+  }, [plate, refreshKey]);
 
   if (editing) {
     return (
       <ParkForm
-        plate={session.plate}
+        plate={plate}
         maps={maps}
         title="編輯紀錄"
         initial={editing}
@@ -1200,7 +1094,7 @@ function HistoryView({ session, onBack }) {
           onCancel={() => setDeleting(null)}
           onConfirm={async () => {
             const next = records.filter((r) => r.id !== deleting.id);
-            await sSet(kRecords(session.plate), next);
+            await sSet(kRecords(plate), next);
             setDeleting(null);
             setRefreshKey((k) => k + 1);
           }}
@@ -1321,7 +1215,7 @@ function MapEditView({ plate, initial, onCancel, onSaved }) {
   );
 }
 
-function MapsListView({ session, onBack }) {
+function MapsListView({ plate, onBack }) {
   const [maps, setMaps] = useState(null);
   const [editing, setEditing] = useState(undefined);
   const [deleting, setDeleting] = useState(null);
@@ -1329,15 +1223,15 @@ function MapsListView({ session, onBack }) {
 
   useEffect(() => {
     (async () => {
-      const m = await sGet(kMaps(session.plate));
+      const m = await sGet(kMaps(plate));
       setMaps(m || []);
     })();
-  }, [session.plate, refreshKey]);
+  }, [plate, refreshKey]);
 
   if (editing !== undefined) {
     return (
       <MapEditView
-        plate={session.plate}
+        plate={plate}
         initial={editing}
         onCancel={() => setEditing(undefined)}
         onSaved={() => { setEditing(undefined); setRefreshKey((k) => k + 1); }}
@@ -1393,7 +1287,7 @@ function MapsListView({ session, onBack }) {
           onCancel={() => setDeleting(null)}
           onConfirm={async () => {
             const next = maps.filter((m) => m.id !== deleting.id);
-            await sSet(kMaps(session.plate), next);
+            await sSet(kMaps(plate), next);
             setDeleting(null);
             setRefreshKey((k) => k + 1);
           }}
@@ -1441,15 +1335,10 @@ function HelpView({ onBack }) {
       <TopBar title="使用說明" onBack={onBack} />
       <div className="px-5 py-6">
         <HelpStep
-          icon="key"
-          title="新增車牌（首次使用）"
-          desc="輸入車牌全名 ➜ 你的名字 ➜ 自訂密碼。"
-          note="每台車可擁有多個使用者，各使用者擁有各自的密碼，各使用者分別登入時都可以查閱同台車的紀錄。"
-        />
-        <HelpStep
-          icon="login"
-          title="登入帳號"
-          desc="輸入車牌 ➜ 選擇名稱 ➜ 輸入密碼。"
+          icon="car"
+          title="選擇或新增車牌"
+          desc="常用車牌會列在首頁，點一下就能直接進入。新增時輸入完整車牌即可，不需要帳號或密碼。"
+          note="車牌是唯一的存取方式，別把完整車牌告訴不想分享的人。常用清單只存在這支手機，換手機需要重新輸入一次。"
         />
         <HelpStep
           icon="parking"
@@ -1488,8 +1377,7 @@ function HelpView({ onBack }) {
 // ---------------------------------------------------------------------------
 
 function App() {
-  const [session, setSession] = useState(null);
-  const [authView, setAuthView] = useState("login");
+  const [currentPlate, setCurrentPlate] = useState(null);
   const [nav, setNav] = useState("home");
   const [showHelp, setShowHelp] = useState(false);
   const [status, setStatus] = useState(isConfigured ? "checking" : "unconfigured");
@@ -1543,12 +1431,10 @@ function App() {
     );
   }
 
-  if (!session) {
+  if (!currentPlate) {
     return (
       <div className="pk-root">
-        {authView === "login"
-          ? <LoginView onLoggedIn={setSession} onGoRegister={() => setAuthView("register")} onGoHelp={() => setShowHelp(true)} />
-          : <RegisterView onDone={setSession} onCancel={() => setAuthView("login")} />}
+        <LandingView onEnter={setCurrentPlate} onGoHelp={() => setShowHelp(true)} />
       </div>
     );
   }
@@ -1557,15 +1443,15 @@ function App() {
     <div className="pk-root">
       {nav === "home" && (
         <HomeView
-          session={session}
-          onLogout={() => { setSession(null); setAuthView("login"); setNav("home"); }}
+          plate={currentPlate}
+          onSwitchCar={() => { setCurrentPlate(null); setNav("home"); }}
           onGoHistory={() => setNav("history")}
           onGoMaps={() => setNav("maps")}
           onGoHelp={() => setShowHelp(true)}
         />
       )}
-      {nav === "history" && <HistoryView session={session} onBack={() => setNav("home")} />}
-      {nav === "maps" && <MapsListView session={session} onBack={() => setNav("home")} />}
+      {nav === "history" && <HistoryView plate={currentPlate} onBack={() => setNav("home")} />}
+      {nav === "maps" && <MapsListView plate={currentPlate} onBack={() => setNav("home")} />
     </div>
   );
 }
